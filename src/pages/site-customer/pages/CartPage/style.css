@@ -1,0 +1,93 @@
+/* CartPage.css */
+
+.order-summary {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border: 1px solid rgba(175, 173, 173, 0.689);
+    /* Set your desired background color */
+}
+
+a {
+    text-decoration: none;
+    color: white;
+}
+
+table {
+    background-color: #ffffff;
+    color: #333333;
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid rgba(175, 173, 173, 0.689);
+}
+
+thead {
+    background-color: #F7FBFC;
+    border-bottom: 1px solid rgba(175, 173, 173, 0.689);
+}
+
+th, td {
+    padding: 15px;
+    text-align: left;
+}
+
+td>img {
+    width: 80px;
+    display: block;
+    margin: auto;
+    border-radius: 4px;
+}
+
+td.product-name {
+    max-width: 200px;
+}
+
+td.product-quantity {
+    max-width: 200px;
+}
+
+.product-price, .product-subtotal, .product-quantity {
+    font-weight: bold;
+}
+
+
+tbody tr:hover {
+    background-color: #f9f9f9;
+    transition: background-color 0.3s;
+}
+
+.btn-block {
+    min-width: 100%;
+}
+
+.product-quantity {
+    display: flex;
+    align-items: center;
+}
+
+.quantity-control {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid #ced4da;
+    border-radius: 50%;
+    margin: 0 5px;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+.quantity-input {
+    width: 30px;
+    height: 30px;
+    border: none;
+    text-align: center;
+    font-size: 16px;
+}
+
+.quantity-button {
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    outline: none;
+}

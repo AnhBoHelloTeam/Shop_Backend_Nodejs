@@ -1,0 +1,53 @@
+#form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 500px;
+    max-height: 700px;
+    padding: 30px;
+    border-radius: 5px;
+    box-shadow: 2px 2px 3px rgba(128, 128, 128, 0.572);
+    border: 1px solid rgba(128, 128, 128, 0.572);
+    margin-left: 20px;
+}
+
+.input-group {
+    display: grid;
+    grid-template-columns: 1fr 3fr;
+    gap: 10px;
+}
+
+.input-group label {
+    font-weight: bold;
+}
+
+
+.input-group :last-child {
+    border: 1px solid gainsboro;
+    border-radius: 999px;
+    padding: 10px;
+    width: 100%;
+    box-sizing: border-box;
+    font-size: 16px;
+}
+
+/* Style for submit and reset buttons */
+input[type="submit"] {
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+
+}
+
+/* Optional: Add hover effects to buttons */
+input[type="submit"]:hover {
+    background-color: #4caf50;
+    color: white;
+}
+
+.content {
+
+    display: grid;
+    grid-template-columns: 3fr 1fr
+}

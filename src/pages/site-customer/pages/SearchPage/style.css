@@ -1,0 +1,64 @@
+.navigate {
+    padding: 10px;
+    border-right: 1px solid gainsboro;
+    min-height: 1000px;
+}
+
+.list-categories {
+    margin-top: 10px;
+}
+
+.list-categories .item {
+    padding: 8px 10px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background-color 0.3s ease;
+}
+
+.list-categories .item:hover {
+    background-color: #e0e0e0;
+}
+
+.list-categories .item .nav-link {
+    color: black;
+    font-size: large;
+    font-weight: 600;
+}
+
+.category {
+    padding: 40px;
+    font-size: large;
+}
+
+.name-category {
+    color: #0D6EFD;
+    font-size: 70px;
+    font-weight: 700;
+    padding: 50px 0;
+
+}
+
+.introduce-category {
+    color: #555;
+    margin-bottom: 20px;
+}
+
+.sort-product {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+#productsSelect {
+    border: none;
+    padding: 5px;
+    color: #959595;
+}
+
+.card-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-column-gap: 10px;
+    grid-row-gap: 10px;
+}

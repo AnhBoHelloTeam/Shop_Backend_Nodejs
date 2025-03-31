@@ -1,0 +1,9 @@
+/* style.css */
+.table th,
+.table td {
+    vertical-align: middle;
+}
+
+.table ul {
+    padding-left: 20px;
+}

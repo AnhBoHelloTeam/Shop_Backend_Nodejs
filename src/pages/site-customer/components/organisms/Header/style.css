@@ -1,0 +1,20 @@
+.category {
+    font-size: 18px;
+    font-weight: 400;
+}
+
+.icon {
+    position: relative;
+}
+
+.nav-link {
+    color: white;
+}
+
+.user-dropdown .dropdown-toggle::after {
+    content: none;
+}
+
+.logo {
+    width: 100px;
+}

@@ -1,0 +1,61 @@
+@media (max-width: 768px) {
+    /* Add responsive styles here */
+}
+
+/* Offcanvas Styles */
+.offcanvas-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* Cart Item Styles */
+.cart-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+}
+
+.cart-item img {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+}
+
+.name-item {
+    width: 300px;
+}
+
+.cart-item .name-item {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Subtotal Styles */
+.subtotal {
+    display: flex;
+    justify-content: space-between;
+}
+
+/* Remote Button Styles */
+.remote-button {
+    display: flex;
+    gap: 10px;
+    flex-direction: column;
+}
+
+.remote-button button {
+    padding: 10px;
+    width: 100%;
+    background: #0D6EFD;
+    color: white;
+    font-weight: 600;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+}
+
+.remote-button button:hover {
+    background: #0056b3;
+}

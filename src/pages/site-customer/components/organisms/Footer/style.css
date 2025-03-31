@@ -1,0 +1,26 @@
+footer {
+    background-color: #E8ECEB;
+}
+
+.section-footer {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: 1fr;
+    grid-column-gap: 20px;
+    grid-row-gap: 0px;
+}
+
+.widget_nav a {
+    display: block;
+}
+
+.payment-img {
+    width: 100%;
+    max-width: 50px;
+    padding: 4px;
+}
+
+.logo-app {
+    width: 100%;
+    max-width: 100px;
+}

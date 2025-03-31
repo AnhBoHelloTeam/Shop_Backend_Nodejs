@@ -1,0 +1,32 @@
+.sale {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 30px;
+}
+
+.details-sale {
+    max-width: 500px;
+    padding: 50px 10px;
+}
+
+.details-sale h3 {
+    font-size: 1rem;
+    color: gray;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.details-sale .text {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.img-sale {
+    max-width: 100%;
+    height: 500px;
+    object-fit: cover;
+}

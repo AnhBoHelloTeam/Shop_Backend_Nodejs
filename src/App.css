@@ -1,0 +1,114 @@
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.min-height-100vh {
+  min-height: 100vh;
+}
+
+.nav-pills .nav-link.activated {
+  color: #fff;
+  background-color: red;
+}
+
+.quantity-picker {
+  display: inline-block;
+  border-radius: 3px;
+  vertical-align: middle;
+}
+
+.quantity-input:focus {
+  background: red;
+}
+
+.quantity-modifier,
+.quantity-display {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  outline: none;
+}
+
+.quantity-modifier {
+  height: 100%;
+  width: 3rem;
+  font-size: 1.5rem;
+  background: #f3f3f3;
+  color: #888;
+  border: 0 solid #dbdbdb;
+  text-align: center;
+  cursor: pointer;
+}
+
+.quantity-modifier:hover {
+  background: #dadada;
+  color: #555555;
+}
+
+.quantity-modifier:focus {
+  outline: 0;
+}
+
+.left-modifier {
+  border-radius: 3px 0 0 3px;
+}
+
+.mod-disable {
+  color: #E0E0E0;
+}
+
+.mod-disable:hover {
+  background-color: #f3f3f3 !important;
+  color: #E0E0E0;
+}
+
+.right-modifier {
+  border-radius: 0 3px 3px 0;
+}
+
+.quantity-display {
+  width: 4rem;
+  padding: .5rem;
+  font-size: 1.5rem;
+  border: 0;
+  border-top: 0 solid #dbdbdb;
+  border-bottom: 0 solid #dbdbdb;
+  text-align: center;
+}
