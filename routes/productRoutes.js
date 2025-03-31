@@ -4,10 +4,21 @@ const { authMiddleware, adminMiddleware } = require("../middlewares/authMiddlewa
 
 const router = express.Router();
 
-// 📌 Lấy danh sách tất cả sản phẩm
+// 📌 Lấy danh sách tất cả sản phẩm (có phân trang, lọc theo danh mục, khoảng giá, tên)
 router.get("/", async (req, res) => {
     try {
-        const products = await Product.find();
+        const { page = 1, limit = 10, category, minPrice, maxPrice, name } = req.query;
+        const filter = {};
+
+        if (category) filter.category = category;
+        if (minPrice) filter.price = { ...filter.price, $gte: Number(minPrice) };
+        if (maxPrice) filter.price = { ...filter.price, $lte: Number(maxPrice) };
+        if (name) filter.name = new RegExp(name, "i");
+
+        const products = await Product.find(filter)
+            .skip((page - 1) * limit)
+            .limit(Number(limit));
+        
         res.json(products);
     } catch (error) {
         res.status(500).json({ message: "Lỗi server", error: error.message });
@@ -34,6 +45,9 @@ router.post("/", authMiddleware, adminMiddleware, async (req, res) => {
         if (!name || !price || !description || !category || !stock || !image) {
             return res.status(400).json({ message: "Thiếu thông tin sản phẩm" });
         }
+        if (price <= 0 || stock < 0) {
+            return res.status(400).json({ message: "Giá và số lượng phải là số dương" });
+        }
 
         const newProduct = new Product({ name, price, description, category, stock, image });
         await newProduct.save();
@@ -43,7 +57,6 @@ router.post("/", authMiddleware, adminMiddleware, async (req, res) => {
         res.status(500).json({ message: "Lỗi server", error: error.message });
     }
 });
-
 
 // 📌 Xóa sản phẩm (Chỉ admin)
 router.delete("/:id", authMiddleware, adminMiddleware, async (req, res) => {
@@ -69,6 +82,13 @@ router.put("/:id", authMiddleware, adminMiddleware, async (req, res) => {
         fields.forEach(field => {
             if (req.body[field] !== undefined) updateData[field] = req.body[field];
         });
+
+        if (updateData.price !== undefined && updateData.price <= 0) {
+            return res.status(400).json({ message: "Giá phải là số dương" });
+        }
+        if (updateData.stock !== undefined && updateData.stock < 0) {
+            return res.status(400).json({ message: "Số lượng không thể âm" });
+        }
 
         const updatedProduct = await Product.findByIdAndUpdate(req.params.id, updateData, { new: true });
 

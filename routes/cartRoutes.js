@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const Cart = require("../models/Cart");
 const Product = require("../models/Product");
 const { authMiddleware } = require("../middlewares/authMiddleware");
@@ -15,18 +16,24 @@ router.post("/add", authMiddleware, async (req, res) => {
             return res.status(400).json({ message: "Thiếu productId hoặc quantity" });
         }
 
+        if (!mongoose.Types.ObjectId.isValid(productId)) {
+            return res.status(400).json({ message: "ID sản phẩm không hợp lệ" });
+        }
+
+        if (!Number.isInteger(quantity) || quantity <= 0) {
+            return res.status(400).json({ message: "Số lượng phải là số nguyên dương" });
+        }
+
         const product = await Product.findById(productId);
         if (!product) {
             return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
         }
 
-        // Kiểm tra xem user đã có giỏ hàng chưa
         let cart = await Cart.findOne({ user: userId });
         if (!cart) {
             cart = new Cart({ user: userId, items: [] });
         }
 
-        // Kiểm tra sản phẩm đã có trong giỏ hàng chưa
         const existingItem = cart.items.find(item => item.product.toString() === productId);
         if (existingItem) {
             existingItem.quantity += quantity;
@@ -42,10 +49,15 @@ router.post("/add", authMiddleware, async (req, res) => {
     }
 });
 
+
 // 📌 Xem giỏ hàng của user
 router.get("/", authMiddleware, async (req, res) => {
     try {
-        const userId = req.user.userId; // ✅ Đảm bảo lấy đúng userId
+        if (!req.user || !req.user.userId) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const userId = req.user.userId;
         console.log("🛒 Đang lấy giỏ hàng cho user:", userId);
 
         const cart = await Cart.findOne({ user: userId }).populate("items.product");
@@ -64,26 +76,28 @@ router.get("/", authMiddleware, async (req, res) => {
 });
 
 // 📌 Xóa sản phẩm khỏi giỏ hàng
-router.delete("/remove/:productId", authMiddleware, async (req, res) => {
+router.delete("/clear", authMiddleware, async (req, res) => {
     try {
         const userId = req.user.userId;
-        const productId = req.params.productId;
 
+        // Tìm giỏ hàng của user
         let cart = await Cart.findOne({ user: userId });
+
         if (!cart) {
-            return res.status(404).json({ message: "Giỏ hàng trống" });
+            return res.status(404).json({ message: "Giỏ hàng đã trống rồi!" });
         }
 
-        // Lọc bỏ sản phẩm cần xóa
-        cart.items = cart.items.filter(item => item.product.toString() !== productId);
-
+        cart.items = []; // Xóa tất cả sản phẩm trong giỏ hàng
         await cart.save();
-        res.status(200).json({ message: "Đã xóa sản phẩm khỏi giỏ hàng", cart });
+
+        res.status(200).json({ message: "Đã xoá toàn bộ giỏ hàng", cart });
     } catch (error) {
-        console.error("🔥 Lỗi khi xóa sản phẩm:", error);
+        console.error("🔥 Lỗi khi xoá giỏ hàng:", error);
         res.status(500).json({ message: "Lỗi server", error: error.message });
     }
 });
+
+
 
 // 📌 Giảm số lượng sản phẩm (hoặc xóa nếu số lượng = 0)
 router.put("/decrease/:productId", authMiddleware, async (req, res) => {
@@ -91,13 +105,16 @@ router.put("/decrease/:productId", authMiddleware, async (req, res) => {
         const userId = req.user.userId;
         const productId = req.params.productId;
 
+        if (!mongoose.Types.ObjectId.isValid(productId)) {
+            return res.status(400).json({ message: "ID sản phẩm không hợp lệ" });
+        }
+
         let cart = await Cart.findOne({ user: userId });
         if (!cart) {
             return res.status(404).json({ message: "Giỏ hàng trống" });
         }
 
         const itemIndex = cart.items.findIndex(item => item.product.toString() === productId);
-
         if (itemIndex === -1) {
             return res.status(404).json({ message: "Sản phẩm không tồn tại trong giỏ hàng" });
         }
@@ -105,7 +122,6 @@ router.put("/decrease/:productId", authMiddleware, async (req, res) => {
         if (cart.items[itemIndex].quantity > 1) {
             cart.items[itemIndex].quantity -= 1;
         } else {
-            // Xóa sản phẩm nếu số lượng = 0
             cart.items.splice(itemIndex, 1);
         }
 
@@ -117,11 +133,16 @@ router.put("/decrease/:productId", authMiddleware, async (req, res) => {
     }
 });
 
+
 // 📌 Tăng số lượng sản phẩm trong giỏ hàng
 router.put("/increase/:productId", authMiddleware, async (req, res) => {
     try {
         const userId = req.user.userId;
         const productId = req.params.productId;
+
+        if (!mongoose.Types.ObjectId.isValid(productId)) {
+            return res.status(400).json({ message: "ID sản phẩm không hợp lệ" });
+        }
 
         let cart = await Cart.findOne({ user: userId });
         if (!cart) {
@@ -129,12 +150,10 @@ router.put("/increase/:productId", authMiddleware, async (req, res) => {
         }
 
         const itemIndex = cart.items.findIndex(item => item.product.toString() === productId);
-
         if (itemIndex === -1) {
             return res.status(404).json({ message: "Sản phẩm không tồn tại trong giỏ hàng" });
         }
 
-        // Tăng số lượng sản phẩm lên 1
         cart.items[itemIndex].quantity += 1;
 
         await cart.save();
@@ -144,6 +163,7 @@ router.put("/increase/:productId", authMiddleware, async (req, res) => {
         res.status(500).json({ message: "Lỗi server", error: error.message });
     }
 });
+
 
 
 module.exports = router;
