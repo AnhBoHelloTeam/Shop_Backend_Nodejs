@@ -8,6 +8,9 @@ const router = express.Router();
 // Đăng ký tài khoản
 router.post("/register", async (req, res) => {
     try {
+        if (!req.body.role) req.body.role = 'user'
+        if (!req.body.avatar) req.body.avatar = 'https://static.vecteezy.com/system/resources/thumbnails/009/292/244/small/default-avatar-icon-of-social-media-user-vector.jpg'
+
         const { name, email, password, phone, address, avatar, role } = req.body;
 
         if (!["user", "admin"].includes(role)) {
@@ -49,7 +52,7 @@ router.post("/login", async (req, res) => {
         const token = jwt.sign(
             { userId: user._id, role: user.role },
             process.env.JWT_SECRET,
-            { expiresIn: "1h" }
+            { expiresIn: "3h" }
         );
 
         res.json({ token, user });

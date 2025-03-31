@@ -42,7 +42,7 @@ router.post("/checkout", authMiddleware, async (req, res) => {
 router.get("/history", authMiddleware, async (req, res) => {
     try {
         const userId = req.user.userId;
-        const orders = await Order.find({ user: userId }).sort({ createdAt: -1 });
+        const orders = await Order.find({ user: userId }).sort({ createdAt: -1 }).populate("items.product");
 
         if (!orders.length) {
             return res.status(200).json({ message: "Chưa có đơn hàng nào." });

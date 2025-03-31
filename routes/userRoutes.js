@@ -3,6 +3,16 @@ const User = require("../models/User");
 const { authMiddleware, adminMiddleware } = require("../middlewares/authMiddleware");
 
 const router = express.Router();
+router.get("/current", authMiddleware, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.userId).select("-password");
+        console.log(user);
+
+        res.json(user);
+    } catch (error) {
+        res.status(500).json({ message: "Loi server" });
+    }
+});
 
 // Chỉ Admin mới có quyền xem danh sách tất cả người dùng
 router.get("/", authMiddleware, adminMiddleware, async (req, res) => {
@@ -34,5 +44,19 @@ router.get("/:id", authMiddleware, async (req, res) => {
     }
 });
 
+// Get Current
+
+// delete route
+router.delete("/:id", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+        const user = await User.findByIdAndDelete(req.params.id);
+        if (!user) {
+            return res.status(404).json({ message: "Không tìm thấy người dùng" });
+        }
+        res.json({ message: "Xóa người dùng thành công" });
+    } catch (error) {
+        res.status(500).json({ message: "Loi server" });
+    }
+});
 // Xuất router
 module.exports = router;
