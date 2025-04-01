@@ -7,7 +7,7 @@ const router = express.Router();
 // 📌 Lấy danh sách tất cả sản phẩm (có phân trang, lọc theo danh mục, khoảng giá, tên)
 router.get("/", async (req, res) => {
     try {
-        const { page = 1, limit = 10, category, minPrice, maxPrice, name } = req.query;
+        const { page = 1, limit = 50, category, minPrice, maxPrice, name } = req.query;
         const filter = {};
 
         if (category) filter.category = category;
