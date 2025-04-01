@@ -14,11 +14,7 @@ const AdminMenu = () => {
             </h2>
             <div className="pt-3">
                 <ul className="nav nav-pills flex-column">
-                    <li className="nav-item">
-                        <NavLink to={SCREEN_URL.ADMIN_USERS} className={navLinkClass}>
-                            Quản lý Users
-                        </NavLink>
-                    </li>
+
                     <li className="nav-item">
                         <NavLink to={SCREEN_URL.ADMIN_PRODUCT} className={navLinkClass}>
                             Quản lý products

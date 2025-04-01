@@ -88,7 +88,7 @@ const LoginPage = () => {
                                 login({
                                     isLoggedIn: true,
                                     token: response.token,
-                                    userData: response.user, // Điều chỉnh theo cấu trúc response
+                                    userData: response.user,
                                 })
                             );
                             navigate(SCREEN_URL.HOME);

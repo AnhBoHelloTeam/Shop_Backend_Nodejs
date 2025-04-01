@@ -1,30 +1,29 @@
-import React, { useEffect } from 'react'
-import { useState } from 'react';
-import DetailProduct from '../../../../site-customer/components/molecules/DetailProduct/DetailProduct';
-import { CreateProductsAPI, createProductsAPI, fetchProductsApi } from '../../../../../api/productsAPI';
-import './style.css'
-import { toast } from 'react-toastify';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { createProductsAPI, fetchProductsApi } from "../../../../../api/productsAPI"; // Đường dẫn tới API
+import "./style.css";
+import { toast } from "react-toastify";
 
 const ProductCreateAdminPage = () => {
-    // Khởi tạo State 
-    const [name, setName] = useState('');
-    const [category, setCategory] = useState('');
-    const [price, setPrice] = useState('');
-    const [quantity, setQuantity] = useState('')
-    const [description, setDescription] = useState('')
-    const [imageFile, setImageFile] = useState(null);
-    const [previewImage, setPreviewImage] = useState(null);
-    const [products, setProducts] = useState([]);
-    const [categories, setCategories] = useState([]);
+    const navigate = useNavigate();
 
+    // Khởi tạo State
+    const [name, setName] = useState("");
+    const [category, setCategory] = useState("");
+    const [price, setPrice] = useState("");
+    const [stock, setStock] = useState("");
+    const [description, setDescription] = useState("");
+    const [imageUrl, setImageUrl] = useState(""); // Thay imageFile bằng imageUrl
+    const [loading, setLoading] = useState(false);
+    const [categories, setCategories] = useState([
+        { id: "Laptop", name: "Laptop" }, // Giả lập danh mục
+    ]);
 
-
-
+    // Lấy danh sách sản phẩm (nếu cần để kiểm tra)
     const fetchData = async () => {
         try {
             const fetchedProducts = await fetchProductsApi();
-            setProducts(fetchedProducts.data.products);
-
+            console.log("Fetched products:", fetchedProducts.data.products);
         } catch (error) {
             console.error("Error fetching products:", error);
         }
@@ -32,72 +31,146 @@ const ProductCreateAdminPage = () => {
 
     useEffect(() => {
         fetchData();
+        // Nếu có API lấy danh mục, gọi ở đây
+        // fetchCategories().then(data => setCategories(data));
     }, []);
 
+    // Xử lý thêm sản phẩm
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
 
+        // Tạo object dữ liệu để gửi
+        const productData = {
+            name,
+            description,
+            price: Number(price), // Chuyển thành số
+            stock: Number(stock), // Chuyển thành số
+            category,
+            image: imageUrl, // Gửi URL hình ảnh
+        };
 
-    const handleImageChange = (e) => {
-        const file = e.target.files[0];
-        setImageFile(file);
+        try {
+            const newProduct = await createProductsAPI(productData);
+            toast.success("Thêm sản phẩm thành công!");
+            console.log("New product:", newProduct);
 
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setPreviewImage(reader.result);
-            };
-            reader.readAsDataURL(file);
-        } else {
-            setPreviewImage(null);
+            // Reset form sau khi thêm thành công
+            setName("");
+            setCategory("");
+            setPrice("");
+            setStock("");
+            setDescription("");
+            setImageUrl("");
+
+            // Chuyển hướng về trang danh sách sản phẩm
+            navigate("/admin/products");
+        } catch (error) {
+            toast.error(error.message || "Không thể thêm sản phẩm.");
+            console.error("Error creating product:", error);
+        } finally {
+            setLoading(false);
         }
     };
-    // Handle Event
+
     return (
-        <main className='content'>
-
-
+        <main className="content">
             <div id="form">
-                <h3>Chỉnh sửa sản phẩm</h3>
-                <input type="hidden" id="ID" />
-                <div className="input-group">
-                    <label htmlFor="name">Tên sản phẩm</label>
-                    <input type="text" id="name" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-                </div>
-                <div className="input-group">
-                    <label htmlFor="categorySelect">Danh mục</label>
-                    <select id="categorySelect" name="category" value={category} onChange={(e) => setCategory(e.target.value)}>
-                        <option value="">===Chọn Danh Mục===</option>
-                        {categories.map((category) => (
-                            <option key={category.id} value={category.id}>
-                                {category.name}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <div className="input-group">
-                    <label htmlFor="price">Giá cả</label>
-                    <input type="text" id="price" placeholder="Giá cả" value={price} onChange={(e) => setPrice(e.target.value)} />
-                </div>
-                <div className="input-group">
-                    <label htmlFor="description">Miêu tả</label>
-                    <input type="text" id="description" placeholder="Miêu tả" value={description} onChange={(e) => setDescription(e.target.value)} />
-                </div>
-                <div className="input-group">
-                    <label htmlFor="quantity">Số lượng còn trong kho</label>
-                    <input type="text" id="quantity" placeholder="Số lượng còn trong kho" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
-                </div>
-                <div className="input-group">
-                    <label htmlFor="img">Hình ảnh:</label>
-                    <input type="file" id="img" onChange={handleImageChange} />
-                    {previewImage && (
-                        <img src={previewImage} alt="Image Preview" className="img-preview" />
-                    )}
-                </div>
-                <div className="">
-                    <input type="submit" value="Thêm sản phẩm" onClick={null} />
-                </div>
+                <h3>Thêm sản phẩm mới</h3>
+                <form onSubmit={handleSubmit}>
+                    <div className="input-group">
+                        <label htmlFor="name">Tên sản phẩm</label>
+                        <input
+                            type="text"
+                            id="name"
+                            placeholder="Tên sản phẩm"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            required
+                        />
+                    </div>
+                    <div className="input-group">
+                        <label htmlFor="categorySelect">Danh mục</label>
+                        <select
+                            id="categorySelect"
+                            name="category"
+                            value={category}
+                            onChange={(e) => setCategory(e.target.value)}
+                            required
+                        >
+                            <option value="">===Chọn Danh Mục===</option>
+                            {categories.map((cat) => (
+                                <option key={cat.id} value={cat.id}>
+                                    {cat.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="input-group">
+                        <label htmlFor="price">Giá cả</label>
+                        <input
+                            type="number"
+                            id="price"
+                            placeholder="Giá cả"
+                            value={price}
+                            onChange={(e) => setPrice(e.target.value)}
+                            min="0"
+                            required
+                        />
+                    </div>
+                    <div className="input-group">
+                        <label htmlFor="description">Miêu tả</label>
+                        <textarea
+                            id="description"
+                            placeholder="Miêu tả"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            required
+                        />
+                    </div>
+                    <div className="input-group">
+                        <label htmlFor="stock">Số lượng còn trong kho</label>
+                        <input
+                            type="number"
+                            id="stock"
+                            placeholder="Số lượng còn trong kho"
+                            value={stock}
+                            onChange={(e) => setStock(e.target.value)}
+                            min="0"
+                            required
+                        />
+                    </div>
+                    <div className="input-group">
+                        <label htmlFor="imageUrl">URL Hình ảnh</label>
+                        <input
+                            type="text"
+                            id="imageUrl"
+                            placeholder="Dán URL hình ảnh"
+                            value={imageUrl}
+                            onChange={(e) => setImageUrl(e.target.value)}
+                            required
+                        />
+                        {imageUrl && (
+                            <img
+                                src={imageUrl}
+                                alt="Image Preview"
+                                className="img-preview"
+                                style={{ maxWidth: "200px", marginTop: "10px" }}
+                                onError={() => toast.error("URL hình ảnh không hợp lệ")}
+                            />
+                        )}
+                    </div>
+                    <div className="input-group">
+                        <input
+                            type="submit"
+                            value={loading ? "Đang thêm..." : "Thêm sản phẩm"}
+                            disabled={loading}
+                        />
+                    </div>
+                </form>
             </div>
         </main>
     );
-}
+};
 
-export default ProductCreateAdminPage
+export default ProductCreateAdminPage;

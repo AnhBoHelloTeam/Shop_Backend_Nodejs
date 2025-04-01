@@ -25,13 +25,4 @@ export const SCREEN_URL = {
   ADMIN_CREATE_PRODUCT: '/admin/product/create',
   ADMIN_EDIT_PRODUCT: '/admin/product/:productId',
 
-  // Cart
-  ADMIN_CARTS: '/admin/carts',
-  ADMIN_CREATE_CART: '/admin/create-cart',
-  ADMIN_EDIT_CART: '/admin/cart/:cartId',
-
-  // Cart Items
-  ADMIN_CART_ITEMS: '/admin/cart-items',
-  ADMIN_CREATE_CART_ITEM: '/admin/create-cart-item',
-  ADMIN_EDIT_CART_ITEM: '/admin/cart-item/:cartItemId',
 };

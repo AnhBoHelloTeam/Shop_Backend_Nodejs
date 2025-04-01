@@ -18,27 +18,7 @@ export const layoutAdmin = [
     isSidebar: false,
     title: 'Admin Đăng nhập',
   },
-  {
-    path: SCREEN_URL.ADMIN_USERS,
-    component: UsersAdminPage,
-    isHeader: true,
-    isSidebar: true,
-    title: 'Tài khoản người dùng',
-  },
-  {
-    path: SCREEN_URL.ADMIN_CREATE_USER,
-    component: UserAdminCreatePage,
-    isHeader: true,
-    isSidebar: true,
-    title: 'Tạo thông tin người dùng',
-  },
-  {
-    path: SCREEN_URL.ADMIN_EDIT_USER,
-    component: UserAdminEditPage,
-    isHeader: true,
-    isSidebar: true,
-    title: 'Cập nhật thông tin người dùng',
-  },
+
   {
     path: SCREEN_URL.ADMIN_PRODUCT,
     component: ProductAdminPage,

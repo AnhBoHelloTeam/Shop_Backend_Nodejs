@@ -7,45 +7,45 @@ import { useDispatch, useSelector } from "react-redux";
 import { login } from "../../../../store/user/userSlice";
 
 const AdminLoginPage = () => {
+    console.log(123);
+
     const navigate = useNavigate();
     const dispatch = useDispatch();
-    const { isLoggedIn, current } = useSelector((state) => state.user);
+    const { isLoggedIn, current, isLoading } = useSelector((state) => state.user);
 
-    // State để lưu lỗi
     const [error, setError] = useState("");
-
-    // Ref cho input
     const usernameRef = useRef("");
     const passwordRef = useRef("");
 
-    // Kiểm tra trạng thái đăng nhập và vai trò khi trang tải
     useEffect(() => {
-        if (isLoggedIn && current?.role === "admin") {
-            navigate(SCREEN_URL.ADMIN_HOME); // Nếu đã đăng nhập và là admin, chuyển hướng
+        console.log("AdminLoginPage state:", { isLoggedIn, current, isLoading });
+        if (!isLoading && isLoggedIn && current?.role === "admin") {
+            navigate(SCREEN_URL.ADMIN_HOME);
         }
-    }, [isLoggedIn, current, navigate]);
+    }, [isLoggedIn, current, isLoading, navigate]);
 
-    // Xử lý đăng nhập
     const onSubmit = async () => {
         const username = usernameRef.current.value;
         const password = passwordRef.current.value;
 
         try {
-            const loginRes = await loginAPI(username, password); // Gọi API đăng nhập
-            const { token, userData } = loginRes; // Giả định API trả về token và userData
+            const loginRes = await loginAPI(username, password);
+            const { token, user } = loginRes;
+            console.log(user);
 
-            if (userData.role === "admin") {
-                // Dispatch action login với dữ liệu từ API
-                dispatch(
-                    login({
-                        isLoggedIn: true,
-                        token,
-                        userData,
-                    })
-                );
-                navigate(SCREEN_URL.ADMIN_HOME); // Chuyển hướng đến trang admin
+            dispatch(
+                login({
+                    isLoggedIn: true,
+                    token,
+                    userData: user,
+                })
+            );
+
+            if (user.role === "admin") {
+                navigate(SCREEN_URL.ADMIN_HOME);
             } else {
                 setError("Bạn không phải admin.");
+                navigate(SCREEN_URL.HOME);
             }
         } catch (error) {
             const errorMessage =
@@ -82,8 +82,8 @@ const AdminLoginPage = () => {
                     />
                 </div>
                 {error && <div style={{ color: "red" }} className="mb-3">{error}</div>}
-                <Button variant="primary" onClick={onSubmit} className="w-100">
-                    Đăng nhập
+                <Button variant="primary" onClick={onSubmit} className="w-100" disabled={isLoading}>
+                    {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
                 </Button>
             </Container>
         </div>

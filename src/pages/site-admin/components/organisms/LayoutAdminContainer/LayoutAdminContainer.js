@@ -8,28 +8,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { getCurrent } from "../../../../../store/user/asynsActions";
 
 const LayoutAdminContainer = ({ component: Component, isHeader, isSidebar, title }) => {
-    const dispatch = useDispatch();
-    const navigate = useNavigate();
     const { isLoggedIn, current } = useSelector((state) => state.user);
-
-    useEffect(() => {
-        if (isLoggedIn) {
-            dispatch(getCurrent());
-        }
-    }, [dispatch, isLoggedIn]);
-
-    useEffect(() => {
-        if (!isLoggedIn) {
-            navigate(SCREEN_URL.ADMIN_LOGIN);
-        } else if (current && current.role !== "admin") {
-            navigate(SCREEN_URL.HOME);
-        }
-    }, [isLoggedIn, current, navigate]);
-
-    if (!isLoggedIn || (current && current.role !== "admin")) {
-        return null;
-    }
-
+    console.log(current);
     return (
         <>
             {isHeader && <HeaderAdmin />}
