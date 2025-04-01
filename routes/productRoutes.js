@@ -25,6 +25,21 @@ router.get("/", async (req, res) => {
     }
 });
 
+// 📌 Lấy danh sách tất cả danh mục (từ trường 'category' trong các sản phẩm)
+router.get("/categories", async (req, res) => {
+    try {
+        // Lấy danh sách tất cả danh mục duy nhất từ trường 'category' của sản phẩm
+        const categories = await Product.distinct("category");
+
+        // Trả về danh sách danh mục
+        res.json(categories);
+    } catch (error) {
+        console.error("Lỗi khi lấy danh mục:", error);
+        res.status(500).json({ message: "Lỗi server", error: error.message });
+    }
+});
+
+
 // 📌 Lấy thông tin sản phẩm theo ID
 router.get("/:id", async (req, res) => {
     try {
@@ -72,6 +87,9 @@ router.delete("/:id", authMiddleware, adminMiddleware, async (req, res) => {
         res.status(500).json({ message: "Lỗi server", error: error.message });
     }
 });
+
+
+
 
 // 📌 Cập nhật sản phẩm theo ID
 router.put("/:id", authMiddleware, adminMiddleware, async (req, res) => {

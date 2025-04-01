@@ -50,7 +50,7 @@ router.post("/add", authMiddleware, async (req, res) => {
 });
 
 
-// 📌 Xem giỏ hàng của user
+// 📌 Xem giỏ hàng của user với tổng giá trị và số lượng
 router.get("/", authMiddleware, async (req, res) => {
     try {
         if (!req.user || !req.user.userId) {
@@ -64,38 +64,93 @@ router.get("/", authMiddleware, async (req, res) => {
 
         if (!cart) {
             console.log("⚠️ Không tìm thấy giỏ hàng trong DB");
-            return res.status(200).json({ message: "Giỏ hàng trống", items: [] });
+            return res.status(200).json({ 
+                message: "Giỏ hàng trống", 
+                items: [], 
+                totalQuantity: 0, 
+                totalPrice: 0 
+            });
         }
 
-        console.log("✅ Giỏ hàng tìm thấy:", cart);
-        res.json(cart);
+        // Tính tổng số lượng và tổng giá
+        let totalQuantity = 0;
+        let totalPrice = 0;
+
+        const cartItems = cart.items.map(item => {
+            const product = item.product;
+            const quantity = item.quantity;
+            const totalItemPrice = product.price * quantity;
+
+            // Cộng dồn tổng số lượng và tổng giá
+            totalQuantity += quantity;
+            totalPrice += totalItemPrice;
+
+            return {
+                product: {
+                    _id: product._id,
+                    name: product.name,
+                    image: product.image,
+                    price: product.price
+                },
+                quantity,
+                totalItemPrice
+            };
+        });
+
+        // In ra console để kiểm tra giá trị tính toán
+        console.log("Tổng số lượng:", totalQuantity);
+        console.log("Tổng giá trị:", totalPrice);
+
+        // Trả về dữ liệu
+        res.json({
+            items: cartItems,
+            totalQuantity,   // trả về tổng số lượng
+            totalPrice       // trả về tổng giá trị
+        });
+
     } catch (error) {
         console.error("❌ Lỗi khi lấy giỏ hàng:", error);
         res.status(500).json({ message: "Lỗi server", error: error.message });
     }
 });
 
+
+
 // 📌 Xóa sản phẩm khỏi giỏ hàng
-router.delete("/clear", authMiddleware, async (req, res) => {
+router.delete("/remove/:productId", authMiddleware, async (req, res) => {
     try {
         const userId = req.user.userId;
+        const productId = req.params.productId;
+
+        // Kiểm tra ID sản phẩm hợp lệ
+        if (!mongoose.Types.ObjectId.isValid(productId)) {
+            return res.status(400).json({ message: "ID sản phẩm không hợp lệ" });
+        }
 
         // Tìm giỏ hàng của user
         let cart = await Cart.findOne({ user: userId });
 
         if (!cart) {
-            return res.status(404).json({ message: "Giỏ hàng đã trống rồi!" });
+            return res.status(404).json({ message: "Giỏ hàng trống" });
         }
 
-        cart.items = []; // Xóa tất cả sản phẩm trong giỏ hàng
+        // Tìm sản phẩm trong giỏ hàng
+        const itemIndex = cart.items.findIndex(item => item.product.toString() === productId);
+        if (itemIndex === -1) {
+            return res.status(404).json({ message: "Sản phẩm không tồn tại trong giỏ hàng" });
+        }
+
+        // Xóa sản phẩm khỏi giỏ hàng
+        cart.items.splice(itemIndex, 1);
         await cart.save();
 
-        res.status(200).json({ message: "Đã xoá toàn bộ giỏ hàng", cart });
+        res.status(200).json({ message: "Sản phẩm đã được xóa khỏi giỏ hàng", cart });
     } catch (error) {
-        console.error("🔥 Lỗi khi xoá giỏ hàng:", error);
+        console.error("🔥 Lỗi khi xóa sản phẩm khỏi giỏ hàng:", error);
         res.status(500).json({ message: "Lỗi server", error: error.message });
     }
 });
+
 
 
 
