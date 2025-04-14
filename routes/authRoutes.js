@@ -68,7 +68,6 @@ router.post("/register", async (req, res) => {
             return res.status(400).json({ error: msg });
         }
 
-
         // 3. Kiểm tra password
         if (!password || password.includes(" ") || password.length < 6) {
             const msg = "Mật khẩu không hợp lệ (phải >= 6 ký tự, không khoảng trắng)";
@@ -76,21 +75,28 @@ router.post("/register", async (req, res) => {
             return res.status(400).json({ error: msg });
         }
 
-        // 4. Kiểm tra address
+        // 4. Kiểm tra confirmPassword (nếu có)
+        if (!req.body.confirmPassword || req.body.confirmPassword !== password) {
+            const msg = "Mật khẩu xác nhận không khớp";
+            console.log("❌", msg);
+            return res.status(400).json({ error: msg });
+        }
+
+        // 5. Kiểm tra address
         if (!address || address.trim() === "") {
             const msg = "Vui lòng nhập địa chỉ";
             console.log("❌", msg);
             return res.status(400).json({ error: msg });
         }
 
-        // 5. Kiểm tra phone nếu có
+        // 6. Kiểm tra phone nếu có
         if (phone && !/^\d{9,12}$/.test(phone)) {
             const msg = "Số điện thoại không hợp lệ (chỉ số, 9-12 chữ số)";
             console.log("❌", msg);
             return res.status(400).json({ error: msg });
         }
 
-        // 6. Kiểm tra role
+        // 7. Kiểm tra role (user/admin)
         role = role || "user";
         if (!["user", "admin"].includes(role)) {
             const msg = "Vai trò không hợp lệ";
@@ -98,7 +104,7 @@ router.post("/register", async (req, res) => {
             return res.status(400).json({ error: msg });
         }
 
-        // 7. Tạo user
+        // 8. Tạo user
         const hashedPassword = await bcrypt.hash(password, 10);
         const newUser = new User({
             name,
@@ -119,6 +125,7 @@ router.post("/register", async (req, res) => {
         res.status(500).json({ error: "Lỗi server" });
     }
 });
+
 
 
 // Đăng nhập
