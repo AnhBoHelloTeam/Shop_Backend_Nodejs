@@ -35,54 +35,87 @@ const router = express.Router();
 //         res.status(500).json({ message: "Lỗi server" });
 //     }
 // });
-// Đăng ký tài khoản
 router.post("/register", async (req, res) => {
     try {
         let { name, email, password, phone, address, avatar, role } = req.body;
 
-        // Kiểm tra thiếu thông tin
-        if (!name || !email || !password) {
-            return res.status(400).json({ message: "Vui lòng nhập đầy đủ name, email và password" });
+        console.log("📥 Nhận dữ liệu đăng ký:", { name, email, password, phone, address, avatar, role });
+
+        // 1. Kiểm tra name
+        if (!name || name.trim() === "") {
+            const msg = "Vui lòng nhập họ tên";
+            console.log("❌", msg);
+            return res.status(400).json({ error: msg });
         }
 
-        // Kiểm tra định dạng email hợp lệ
+        // 2. Kiểm tra email
+        if (!email || email.includes(" ")) {
+            const msg = "Email không được để trống hoặc chứa khoảng trắng";
+            console.log("❌", msg);
+            return res.status(400).json({ error: msg });
+        }
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
-            return res.status(400).json({ message: "Email không hợp lệ" });
+            const msg = "Email không hợp lệ";
+            console.log("❌", msg);
+            return res.status(400).json({ error: msg });
         }
 
-        // Kiểm tra mật khẩu ít nhất 6 ký tự
-        if (password.length < 6) {
-            return res.status(400).json({ message: "Mật khẩu phải có ít nhất 6 ký tự" });
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            const msg = "Email đã tồn tại";
+            console.log("❌", msg);
+            return res.status(400).json({ error: msg });
         }
 
-        // Gán giá trị mặc định là "user" nếu không có role
+        // 3. Kiểm tra password
+        if (!password || password.includes(" ") || password.length < 6) {
+            const msg = "Mật khẩu không hợp lệ (phải >= 6 ký tự, không khoảng trắng)";
+            console.log("❌", msg);
+            return res.status(400).json({ error: msg });
+        }
+
+        // 4. Kiểm tra address
+        if (!address || address.trim() === "") {
+            const msg = "Vui lòng nhập địa chỉ";
+            console.log("❌", msg);
+            return res.status(400).json({ error: msg });
+        }
+
+        // 5. Kiểm tra phone nếu có
+        if (phone && !/^\d{9,12}$/.test(phone)) {
+            const msg = "Số điện thoại không hợp lệ (chỉ số, 9-12 chữ số)";
+            console.log("❌", msg);
+            return res.status(400).json({ error: msg });
+        }
+
+        // 6. Kiểm tra role
         role = role || "user";
-
         if (!["user", "admin"].includes(role)) {
-            return res.status(400).json({ message: "Invalid role" });
+            const msg = "Vai trò không hợp lệ";
+            console.log("❌", msg);
+            return res.status(400).json({ error: msg });
         }
 
-        // Kiểm tra email đã tồn tại chưa
-        let user = await User.findOne({ email });
-        if (user) return res.status(400).json({ message: "Email đã tồn tại" });
-
+        // 7. Tạo user
         const hashedPassword = await bcrypt.hash(password, 10);
-
         const newUser = new User({
             name,
             email,
             password: hashedPassword,
             phone,
             address,
-            avatar,
+            avatar: avatar || "https://default-avatar.com/img.png",
             role
         });
 
         await newUser.save();
+        console.log("✅ Đăng ký thành công:", newUser._id);
         res.status(201).json({ message: "Đăng ký thành công", user: newUser });
+
     } catch (error) {
-        res.status(500).json({ message: "Lỗi server" });
+        console.error("❗ Lỗi server:", error.message);
+        res.status(500).json({ error: "Lỗi server" });
     }
 });
 
