@@ -68,6 +68,7 @@ router.post("/register", async (req, res) => {
             return res.status(400).json({ error: msg });
         }
 
+
         // 3. Kiểm tra password
         if (!password || password.includes(" ") || password.length < 6) {
             const msg = "Mật khẩu không hợp lệ (phải >= 6 ký tự, không khoảng trắng)";
