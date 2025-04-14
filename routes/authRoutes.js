@@ -110,11 +110,25 @@ router.post("/register", async (req, res) => {
 // });
 router.post("/login", async (req, res) => {
     try {
-        const { email, password } = req.body;
+        let { email, password } = req.body;
+
+        // Xóa khoảng trắng đầu và cuối
+        email = email.trim();
+        password = password.trim();
 
         // Kiểm tra thiếu thông tin
         if (!email || !password) {
             return res.status(400).json({ message: "Vui lòng nhập email và mật khẩu" });
+        }
+
+        // ✅ Kiểm tra khoảng trắng ở giữa (sau khi đã trim)
+        if (email.includes(' ') || password.includes(' ')) {
+            return res.status(400).json({ message: "Email và mật khẩu không được chứa khoảng trắng ở giữa" });
+        }
+
+        // Kiểm tra độ dài mật khẩu
+        if (password.length < 6) {
+            return res.status(400).json({ message: "Mật khẩu phải có ít nhất 6 ký tự" });
         }
 
         // Kiểm tra định dạng email hợp lệ
@@ -147,6 +161,7 @@ router.post("/login", async (req, res) => {
         res.status(500).json({ message: "Lỗi server" });
     }
 });
+
 
 
 module.exports = router;
