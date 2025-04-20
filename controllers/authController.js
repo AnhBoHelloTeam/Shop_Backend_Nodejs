@@ -5,15 +5,16 @@ const validator = require("validator");
 
 exports.register = async (req, res) => {
     try {
-        let { name, email, password, phone, address, avatar } = req.body;
+        let { name, email, password, confirmPassword, phone, address, avatar } = req.body;
 
-        // ✅ Xử lý khoảng trắng và chuẩn hóa email
+        // ✅ Xử lý khoảng trắng và chuẩn hóa dữ liệu
         name = name?.trim();
         email = email?.trim().toLowerCase();
         password = password?.trim();
+        confirmPassword = confirmPassword?.trim();
 
         // ✅ Kiểm tra dữ liệu đầu vào
-        if (!name || !email || !password) {
+        if (!name || !email || !password || !confirmPassword) {
             return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin" });
         }
 
@@ -33,6 +34,10 @@ exports.register = async (req, res) => {
             return res.status(400).json({ message: "Mật khẩu phải có ít nhất 6 ký tự" });
         }
 
+        if (password !== confirmPassword) {
+            return res.status(400).json({ message: "Mật khẩu xác nhận không khớp" });
+        }
+
         // ❗ Có thể thêm kiểm tra mật khẩu mạnh nếu muốn
         // if (!validator.isStrongPassword(password)) {
         //     return res.status(400).json({ message: "Mật khẩu quá yếu" });
@@ -45,13 +50,23 @@ exports.register = async (req, res) => {
 
         // ✅ Kiểm tra email đã tồn tại
         let user = await User.findOne({ email });
-        if (user) return res.status(400).json({ message: "Email đã tồn tại" });
+        if (user) {
+            return res.status(400).json({ message: "Email đã tồn tại" });
+        }
 
-        // ✅ Hash mật khẩu và lưu
+        // ✅ Hash mật khẩu và lưu vào database
         const hashedPassword = await bcrypt.hash(password, 10);
-        user = new User({ name, email, password: hashedPassword, phone, address, avatar });
+        user = new User({
+            name,
+            email,
+            password: hashedPassword,
+            phone,
+            address,
+            avatar
+        });
 
         await user.save();
+
         res.status(201).json({ message: "Đăng ký thành công" });
 
     } catch (error) {

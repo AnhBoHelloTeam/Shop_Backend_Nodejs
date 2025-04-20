@@ -54,13 +54,14 @@ router.post("/register", async (req, res) => {
             console.log("❌", msg);
             return res.status(400).json({ error: msg });
         }
+        //
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
             const msg = "Email không hợp lệ";
             console.log("❌", msg);
             return res.status(400).json({ error: msg });
         }
-
+        //
         const existingUser = await User.findOne({ email });
         if (existingUser) {
             const msg = "Email đã tồn tại";
