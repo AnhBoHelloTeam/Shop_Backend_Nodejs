@@ -76,12 +76,6 @@ router.post("/register", async (req, res) => {
             return res.status(400).json({ error: msg });
         }
 
-        // 4. Kiểm tra confirmPassword (nếu có)
-        if (!req.body.confirmPassword || req.body.confirmPassword !== password) {
-            const msg = "Mật khẩu xác nhận không khớp";
-            console.log("❌", msg);
-            return res.status(400).json({ error: msg });
-        }
 
         // 5. Kiểm tra address
         if (!address || address.trim() === "") {
