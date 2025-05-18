@@ -1,6 +1,24 @@
 const mongoose = require("mongoose");
 const Order = require("../models/Order");
 const Review = require("../models/review");
+const Notification = require("../models/Notification");
+const { io } = require("../server");
+
+const sendNotification = async (userId, orderId, message) => {
+  try {
+    const notification = new Notification({
+      user: userId,
+      message,
+      order: orderId,
+    });
+    await notification.save();
+
+    io.to(userId.toString()).emit("notification", notification);
+    io.to("admin").emit("notification", notification); // Gửi cho admin
+  } catch (error) {
+    console.error("🔥 Lỗi khi gửi thông báo:", error);
+  }
+};
 
 // Admin lấy danh sách tất cả đơn hàng
 exports.getOrders = async (req, res) => {
@@ -41,6 +59,18 @@ exports.updateOrderStatus = async (req, res) => {
     order.status = status;
     await order.save();
 
+    const statusMessages = {
+      confirmed: "Đơn hàng của bạn đã được xác nhận!",
+      shipped: "Đơn hàng của bạn đang được vận chuyển!",
+      delivered: "Đơn hàng của bạn đã được giao thành công!",
+      returned: "Yêu cầu trả hàng của bạn đã được chấp nhận!",
+      cancelled: "Đơn hàng của bạn đã bị hủy."
+    };
+
+    if (statusMessages[status]) {
+      await sendNotification(order.user, order._id, statusMessages[status]);
+    }
+
     res.status(200).json({ message: "Cập nhật trạng thái đơn hàng thành công", order });
   } catch (error) {
     console.error("🔥 Lỗi khi cập nhật trạng thái đơn hàng:", error);
@@ -68,6 +98,8 @@ exports.confirmOrder = async (req, res) => {
 
     order.status = "confirmed";
     await order.save();
+
+    await sendNotification(order.user, order._id, "Đơn hàng của bạn đã được xác nhận!");
 
     res.json({ message: "Xác nhận đơn hàng thành công", order });
   } catch (error) {
@@ -102,6 +134,8 @@ exports.confirmDelivery = async (req, res) => {
     order.status = "delivered";
     await order.save();
 
+    await sendNotification(userId, order._id, "Đơn hàng của bạn đã được giao thành công!");
+
     res.json({ message: "Xác nhận nhận hàng thành công", order });
   } catch (error) {
     console.error("🔥 Lỗi khi xác nhận nhận hàng:", error);
@@ -134,6 +168,8 @@ exports.requestReturn = async (req, res) => {
 
     order.status = "returned";
     await order.save();
+
+    await sendNotification(userId, order._id, "Yêu cầu trả hàng của bạn đã được chấp nhận!");
 
     res.json({ message: "Yêu cầu trả hàng thành công", order });
   } catch (error) {
@@ -202,4 +238,3 @@ exports.getReviews = async (req, res) => {
     res.status(500).json({ message: "Lỗi server", error: error.message });
   }
 };
-///////

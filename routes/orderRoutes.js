@@ -126,6 +126,42 @@ router.get("/history", authMiddleware, async (req, res) => {
   }
 });
 
+// Lấy đơn hàng theo trạng thái
+router.get("/status/:status", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const userRole = req.user.role;
+    const { status } = req.params;
+
+    const validStatuses = ["all", "pending", "confirmed", "shipped", "delivered", "cancelled", "returned"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Trạng thái không hợp lệ" });
+    }
+
+    let query = {};
+    if (status !== "all") {
+      query.status = status;
+    }
+    if (userRole !== "admin") {
+      query.user = userId;
+    }
+
+    const orders = await Order.find(query)
+      .populate("user", "name email")
+      .populate("items.product", "name image price")
+      .sort({ createdAt: -1 });
+
+    if (!orders.length) {
+      return res.status(200).json({ message: "Chưa có đơn hàng nào" });
+    }
+
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error("🔥 Lỗi khi lấy đơn hàng theo trạng thái:", error);
+    res.status(500).json({ message: "Lỗi server", error: error.message });
+  }
+});
+
 // Admin cập nhật trạng thái đơn hàng
 router.put("/:id/status", authMiddleware, adminMiddleware, updateOrderStatus);
 
@@ -144,4 +180,4 @@ router.post("/review", authMiddleware, createReview);
 // Lấy danh sách đánh giá của sản phẩm
 router.get("/review/:productId", getReviews);
 
-module.exports = router;    
+module.exports = router;
