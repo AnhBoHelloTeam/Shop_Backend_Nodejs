@@ -18,6 +18,16 @@ const discountSchema = new mongoose.Schema({
     required: true,
     min: 0,
   },
+  maxDiscount: {
+    type: Number,
+    min: 0,
+    default: Infinity, // Không giới hạn nếu không set
+  },
+  minDiscount: {
+    type: Number,
+    min: 0,
+    default: 0,
+  },
   startDate: {
     type: Date,
     required: true,
