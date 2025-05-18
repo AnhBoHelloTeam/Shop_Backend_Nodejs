@@ -49,7 +49,7 @@ exports.updateOrderStatus = async (req, res) => {
 };
 
 // Admin xác nhận đơn hàng
-exports.confirmOrder = async (req,TOD res) => {
+exports.confirmOrder = async (req, res) => {
   try {
     const { id } = req.params;
 
