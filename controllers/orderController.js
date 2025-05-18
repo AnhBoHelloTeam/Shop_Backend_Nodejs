@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const Order = require("../models/Order");
-const Review = require("../models/Review");
+const Review = require("../models/review");
 
 // Admin lấy danh sách tất cả đơn hàng
 exports.getOrders = async (req, res) => {
@@ -202,3 +202,4 @@ exports.getReviews = async (req, res) => {
     res.status(500).json({ message: "Lỗi server", error: error.message });
   }
 };
+///////
