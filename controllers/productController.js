@@ -1,4 +1,5 @@
 const Product = require("../models/Product");
+const Order = require("../models/Order");
 
 // 📌 Lấy danh sách tất cả sản phẩm với bộ lọc và phân trang
 exports.getAllProducts = async (req, res) => {
@@ -77,5 +78,47 @@ exports.deleteProduct = async (req, res) => {
         res.json({ message: "Xóa sản phẩm thành công" });
     } catch (error) {
         res.status(500).json({ message: "Lỗi server", error: error.message });
+    }
+};
+
+// 📌 Lấy top 4 sản phẩm hot (dựa trên số lượng bán trong đơn hàng delivered)
+exports.getHotProducts = async (req, res) => {
+    try {
+        // Lấy tất cả đơn hàng có trạng thái delivered và populate product
+        const orders = await Order.find({ status: 'delivered' }).populate('items.product');
+
+        // Tính tổng số lượng bán cho mỗi sản phẩm
+        const productSales = {};
+        orders.forEach(order => {
+            order.items.forEach(item => {
+                if (item.product) { // Kiểm tra product tồn tại
+                    const productId = item.product._id.toString();
+                    if (!productSales[productId]) {
+                        productSales[productId] = {
+                            product: item.product,
+                            soldCount: 0,
+                        };
+                    }
+                    productSales[productId].soldCount += item.quantity;
+                }
+            });
+        });
+
+        // Sắp xếp và lấy top 4 sản phẩm
+        const hotProducts = Object.values(productSales)
+            .sort((a, b) => b.soldCount - a.soldCount)
+            .slice(0, 4)
+            .map(item => ({
+                _id: item.product._id,
+                name: item.product.name,
+                price: item.product.price,
+                image: item.product.image || 'https://via.placeholder.com/150',
+                soldCount: item.soldCount,
+            }));
+
+        res.status(200).json(hotProducts);
+    } catch (error) {
+        console.error('🔥 Lỗi khi lấy sản phẩm hot:', error);
+        res.status(500).json({ message: 'Lỗi server', error: error.message });
     }
 };

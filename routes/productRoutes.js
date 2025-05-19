@@ -1,6 +1,7 @@
 const express = require("express");
 const Product = require("../models/Product");
 const { authMiddleware, adminMiddleware } = require("../middlewares/authMiddleware");
+const { getHotProducts } = require("../controllers/productController");
 
 const router = express.Router();
 
@@ -28,17 +29,13 @@ router.get("/", async (req, res) => {
 // 📌 Lấy danh sách tất cả danh mục (từ trường 'category' trong các sản phẩm)
 router.get("/categories", async (req, res) => {
     try {
-        // Lấy danh sách tất cả danh mục duy nhất từ trường 'category' của sản phẩm
         const categories = await Product.distinct("category");
-
-        // Trả về danh sách danh mục
         res.json(categories);
     } catch (error) {
         console.error("Lỗi khi lấy danh mục:", error);
         res.status(500).json({ message: "Lỗi server", error: error.message });
     }
 });
-
 
 // 📌 Lấy thông tin sản phẩm theo ID
 router.get("/:id", async (req, res) => {
@@ -52,6 +49,9 @@ router.get("/:id", async (req, res) => {
         res.status(500).json({ message: "Lỗi server", error: error.message });
     }
 });
+
+// 📌 Lấy top 4 sản phẩm hot
+router.get("/hot", authMiddleware, getHotProducts);
 
 // 📌 Thêm sản phẩm (Chỉ admin)
 router.post("/", authMiddleware, adminMiddleware, async (req, res) => {
@@ -77,19 +77,14 @@ router.post("/", authMiddleware, adminMiddleware, async (req, res) => {
 router.delete("/:id", authMiddleware, adminMiddleware, async (req, res) => {
     try {
         const deletedProduct = await Product.findByIdAndDelete(req.params.id);
-        
         if (!deletedProduct) {
             return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
         }
-
         res.json({ message: "Xóa sản phẩm thành công" });
     } catch (error) {
         res.status(500).json({ message: "Lỗi server", error: error.message });
     }
 });
-
-
-
 
 // 📌 Cập nhật sản phẩm theo ID
 router.put("/:id", authMiddleware, adminMiddleware, async (req, res) => {
