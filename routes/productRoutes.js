@@ -50,8 +50,8 @@ router.get("/:id", async (req, res) => {
     }
 });
 
-// 📌 Lấy top 4 sản phẩm hot
-router.get("/hot", authMiddleware, getHotProducts);
+// 📌 Lấy top 4 sản phẩm hot (public, không cần đăng nhập)
+router.get("/hot", getHotProducts);
 
 // 📌 Thêm sản phẩm (Chỉ admin)
 router.post("/", authMiddleware, adminMiddleware, async (req, res) => {
