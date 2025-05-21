@@ -305,6 +305,57 @@ router.put("/deliver/:id", authMiddleware, async (req, res) => {
   }
 });
 
+// Đồng bộ thứ hạng thành viên
+router.post("/sync-membership", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "User ID không hợp lệ" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    }
+
+    const deliveredOrders = await Order.countDocuments({
+      user: userId,
+      status: "delivered",
+    });
+
+    const orders = await Order.find({ user: userId, status: "delivered" });
+    const totalSpent = orders.reduce((sum, order) => sum + (order.totalPrice || 0), 0);
+
+    console.log(`📡 [Sync Membership] User ${user._id}: totalSpent=${totalSpent}, deliveredOrders=${deliveredOrders}`);
+
+    let newTier = user.membershipTier;
+    if (deliveredOrders >= 30 && totalSpent >= 240000) {
+      newTier = "Diamond";
+    } else if (deliveredOrders >= 20 && totalSpent >= 160000) {
+      newTier = "Gold";
+    } else if (deliveredOrders >= 10 && totalSpent >= 80000) {
+      newTier = "Silver";
+    } else {
+      newTier = "Member";
+    }
+
+    if (newTier !== user.membershipTier) {
+      user.membershipTier = newTier;
+      user.totalSpent = totalSpent;
+      await user.save();
+      console.log(`📡 User ${user._id} upgraded to ${newTier}`);
+    } else {
+      console.log(`📡 User ${user._id} remains at ${user.membershipTier}`);
+    }
+
+    res.json({ message: "Đồng bộ thứ hạng thành công", membershipTier: newTier });
+  } catch (error) {
+    console.error("🔥 Lỗi khi đồng bộ thứ hạng:", error);
+    res.status(500).json({ message: "Lỗi server", error: error.message });
+  }
+});
+
 // Người dùng yêu cầu trả hàng
 router.put("/return/:id", authMiddleware, requestReturn);
 
