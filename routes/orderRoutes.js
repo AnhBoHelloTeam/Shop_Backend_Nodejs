@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const Order = require("../models/Order");
 const Cart = require("../models/Cart");
 const Discount = require("../models/discount");
+const User = require("../models/User");
 const { authMiddleware, adminMiddleware } = require("../middlewares/authMiddleware");
 const { confirmOrder, confirmDelivery, requestReturn, createReview, getReviews, getOrders, updateOrderStatus } = require("../controllers/orderController");
 
@@ -163,7 +164,70 @@ router.get("/status/:status", authMiddleware, async (req, res) => {
 });
 
 // Admin cập nhật trạng thái đơn hàng
-router.put("/:id/status", authMiddleware, adminMiddleware, updateOrderStatus);
+router.put("/:id/status", authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "ID đơn hàng không hợp lệ" });
+    }
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+    }
+
+    const validStatuses = ["pending", "confirmed", "shipped", "delivered", "cancelled", "returned"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Trạng thái không hợp lệ" });
+    }
+
+    order.status = status;
+    await order.save();
+
+    // Cập nhật thứ hạng thành viên nếu đơn hàng hoàn thành
+    if (status === "delivered") {
+      const user = await User.findById(order.user);
+      if (!user) {
+        return res.status(404).json({ message: "Không tìm thấy người dùng" });
+      }
+
+      // Cập nhật totalSpent
+      user.totalSpent = (user.totalSpent || 0) + order.totalPrice;
+      await user.save();
+
+      // Đếm số đơn hàng delivered
+      const deliveredOrders = await Order.countDocuments({
+        user: order.user,
+        status: "delivered",
+      });
+
+      // Kiểm tra và cập nhật membershipTier
+      let newTier = user.membershipTier;
+      if (deliveredOrders >= 30 && user.totalSpent >= 240000) {
+        newTier = "Diamond";
+      } else if (deliveredOrders >= 20 && user.totalSpent >= 160000) {
+        newTier = "Gold";
+      } else if (deliveredOrders >= 10 && user.totalSpent >= 80000) {
+        newTier = "Silver";
+      } else {
+        newTier = "Member";
+      }
+
+      if (newTier !== user.membershipTier) {
+        user.membershipTier = newTier;
+        await user.save();
+        console.log(`📡 User ${user._id} upgraded to ${newTier}`);
+      }
+    }
+
+    res.json({ message: "Cập nhật trạng thái đơn hàng thành công", order });
+  } catch (error) {
+    console.error("🔥 Lỗi khi cập nhật trạng thái đơn hàng:", error);
+    res.status(500).json({ message: "Lỗi server", error: error.message });
+  }
+});
 
 // Admin xác nhận đơn hàng
 router.put("/confirm/:id", authMiddleware, adminMiddleware, confirmOrder);
