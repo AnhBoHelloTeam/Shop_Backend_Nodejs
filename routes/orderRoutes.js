@@ -203,6 +203,9 @@ router.put("/:id/status", authMiddleware, adminMiddleware, async (req, res) => {
         status: "delivered",
       });
 
+      // Debug
+      console.log(`📡 [Admin Update] User ${user._id}: totalSpent=${user.totalSpent}, deliveredOrders=${deliveredOrders}`);
+
       // Kiểm tra và cập nhật membershipTier
       let newTier = user.membershipTier;
       if (deliveredOrders >= 30 && user.totalSpent >= 240000) {
@@ -219,6 +222,8 @@ router.put("/:id/status", authMiddleware, adminMiddleware, async (req, res) => {
         user.membershipTier = newTier;
         await user.save();
         console.log(`📡 User ${user._id} upgraded to ${newTier}`);
+      } else {
+        console.log(`📡 User ${user._id} remains at ${user.membershipTier}`);
       }
     }
 
@@ -233,7 +238,72 @@ router.put("/:id/status", authMiddleware, adminMiddleware, async (req, res) => {
 router.put("/confirm/:id", authMiddleware, adminMiddleware, confirmOrder);
 
 // Người dùng xác nhận nhận hàng
-router.put("/deliver/:id", authMiddleware, confirmDelivery);
+router.put("/deliver/:id", authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.userId;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "ID đơn hàng không hợp lệ" });
+    }
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+    }
+
+    if (order.user.toString() !== userId) {
+      return res.status(403).json({ message: "Bạn không có quyền xác nhận đơn hàng này" });
+    }
+
+    if (order.status !== "shipped") {
+      return res.status(400).json({ message: "Đơn hàng chưa được giao để xác nhận" });
+    }
+
+    order.status = "delivered";
+    await order.save();
+
+    // Cập nhật thứ hạng thành viên
+    const user = await User.findById(order.user);
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    }
+
+    user.totalSpent = (user.totalSpent || 0) + order.totalPrice;
+    await user.save();
+
+    const deliveredOrders = await Order.countDocuments({
+      user: order.user,
+      status: "delivered",
+    });
+
+    console.log(`📡 [User Confirm] User ${user._id}: totalSpent=${user.totalSpent}, deliveredOrders=${deliveredOrders}`);
+
+    let newTier = user.membershipTier;
+    if (deliveredOrders >= 30 && user.totalSpent >= 240000) {
+      newTier = "Diamond";
+    } else if (deliveredOrders >= 20 && user.totalSpent >= 160000) {
+      newTier = "Gold";
+    } else if (deliveredOrders >= 10 && user.totalSpent >= 80000) {
+      newTier = "Silver";
+    } else {
+      newTier = "Member";
+    }
+
+    if (newTier !== user.membershipTier) {
+      user.membershipTier = newTier;
+      await user.save();
+      console.log(`📡 User ${user._id} upgraded to ${newTier}`);
+    } else {
+      console.log(`📡 User ${user._id} remains at ${user.membershipTier}`);
+    }
+
+    res.json({ message: "Xác nhận nhận hàng thành công", order });
+  } catch (error) {
+    console.error("🔥 Lỗi khi xác nhận nhận hàng:", error);
+    res.status(500).json({ message: "Lỗi server", error: error.message });
+  }
+});
 
 // Người dùng yêu cầu trả hàng
 router.put("/return/:id", authMiddleware, requestReturn);
