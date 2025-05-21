@@ -84,38 +84,50 @@ exports.deleteProduct = async (req, res) => {
 // 📌 Lấy top 4 sản phẩm hot (dựa trên số lượng bán trong đơn hàng delivered)
 exports.getHotProducts = async (req, res) => {
     try {
-        // Lấy tất cả đơn hàng có trạng thái delivered và populate product
+        console.log('📡 Fetching hot products');
         const orders = await Order.find({ status: 'delivered' }).populate('items.product');
+        console.log('📡 Orders found:', orders.length);
 
-        // Tính tổng số lượng bán cho mỗi sản phẩm
+        if (!orders.length) {
+            console.log('📡 No delivered orders found, returning empty hot products');
+            return res.status(200).json([]);
+        }
+
         const productSales = {};
         orders.forEach(order => {
             order.items.forEach(item => {
-                if (item.product) { // Kiểm tra product tồn tại
-                    const productId = item.product._id.toString();
-                    if (!productSales[productId]) {
-                        productSales[productId] = {
-                            product: item.product,
-                            soldCount: 0,
-                        };
-                    }
-                    productSales[productId].soldCount += item.quantity;
+                if (!item.product || !item.product._id) {
+                    console.log('⚠️ Invalid item, missing product:', item);
+                    return;
                 }
+                if (!item.quantity || typeof item.quantity !== 'number' || item.quantity <= 0) {
+                    console.log('⚠️ Invalid quantity for item:', item);
+                    return;
+                }
+                const productId = item.product._id.toString();
+                if (!productSales[productId]) {
+                    productSales[productId] = {
+                        product: item.product,
+                        soldCount: 0,
+                    };
+                }
+                productSales[productId].soldCount += item.quantity;
             });
         });
 
-        // Sắp xếp và lấy top 4 sản phẩm
+        console.log('📡 Product sales:', Object.keys(productSales).length);
         const hotProducts = Object.values(productSales)
             .sort((a, b) => b.soldCount - a.soldCount)
             .slice(0, 4)
             .map(item => ({
                 _id: item.product._id,
-                name: item.product.name,
-                price: item.product.price,
+                name: item.product.name || 'Unknown',
+                price: item.product.price || 0,
                 image: item.product.image || 'https://via.placeholder.com/150',
                 soldCount: item.soldCount,
             }));
 
+        console.log('📡 Hot products:', hotProducts);
         res.status(200).json(hotProducts);
     } catch (error) {
         console.error('🔥 Lỗi khi lấy sản phẩm hot:', error);

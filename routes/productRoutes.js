@@ -37,6 +37,9 @@ router.get("/categories", async (req, res) => {
     }
 });
 
+// 📌 Lấy top 4 sản phẩm hot (public, không cần đăng nhập)
+router.get("/hot", getHotProducts);
+
 // 📌 Lấy thông tin sản phẩm theo ID
 router.get("/:id", async (req, res) => {
     try {
@@ -49,9 +52,6 @@ router.get("/:id", async (req, res) => {
         res.status(500).json({ message: "Lỗi server", error: error.message });
     }
 });
-
-// 📌 Lấy top 4 sản phẩm hot (public, không cần đăng nhập)
-router.get("/hot", getHotProducts);
 
 // 📌 Thêm sản phẩm (Chỉ admin)
 router.post("/", authMiddleware, adminMiddleware, async (req, res) => {
