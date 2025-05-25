@@ -13,17 +13,9 @@ const orderSchema = new mongoose.Schema({
     code: { type: String },
     amount: { type: Number, default: 0 },
   },
-  paymentMethod: { type: String, enum: ["COD", "CARD"], required: true },
   status: {
     type: String,
     enum: ["pending", "confirmed", "shipped", "delivered", "returned", "cancelled"],
-    default: "pending",
-  },
-  returnImages: [{ type: String }], // Lưu URL hình ảnh trả hàng
-  returnReason: { type: String }, // Lý do trả hàng
-  returnStatus: {
-    type: String,
-    enum: ["pending", "approved", "rejected"],
     default: "pending",
   },
   createdAt: { type: Date, default: Date.now },
