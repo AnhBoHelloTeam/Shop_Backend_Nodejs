@@ -87,16 +87,9 @@ router.post("/checkout", authMiddleware, async (req, res) => {
 
     await newOrder.save();
 
-    // Lấy thông tin người dùng
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: "Không tìm thấy người dùng" });
-    }
-
-    // Tạo thông báo cho user
     const notification = new Notification({
       user: userId,
-      message: `Đơn hàng của ${user.name} đã được tạo`,
+      message: `Đơn hàng #${newOrder._id} đã được tạo, đang chờ xác nhận`,
       order: newOrder._id,
       isRead: false,
     });
@@ -111,22 +104,13 @@ router.post("/checkout", authMiddleware, async (req, res) => {
       createdAt: notification.createdAt,
     });
 
-    // Tạo thông báo cho admin
-    const adminNotification = new Notification({
-      user: null,
-      message: `Đơn hàng mới được tạo bởi ${user.name}`,
-      order: newOrder._id,
-      isRead: false,
-    });
-    await adminNotification.save();
-
     req.socketIO.to("admin").emit("notification", {
-      _id: adminNotification._id,
-      user: null,
-      message: adminNotification.message,
+      _id: notification._id,
+      user: userId,
+      message: `Đơn hàng #${newOrder._id} mới được tạo bởi user ${userId}`,
       order: newOrder._id,
       isRead: false,
-      createdAt: adminNotification.createdAt,
+      createdAt: notification.createdAt,
     });
 
     await Cart.findOneAndDelete({ user: userId });
@@ -236,18 +220,13 @@ router.put("/:id/status", authMiddleware, adminMiddleware, async (req, res) => {
     order.status = status;
     await order.save();
 
-    const user = await User.findById(order.user);
-    if (!user) {
-      return res.status(404).json({ message: "Không tìm thấy người dùng" });
-    }
-
     const statusMessages = {
-      pending: `Đơn hàng của ${user.name} đang chờ xác nhận`,
-      confirmed: `Đơn hàng của ${user.name} đã được xác nhận`,
-      shipped: `Đơn hàng của ${user.name} đang được vận chuyển`,
-      delivered: `Đơn hàng của ${user.name} đã được giao`,
-      returned: `Đơn hàng của ${user.name} đã được trả lại`,
-      cancelled: `Đơn hàng của ${user.name} đã bị hủy`,
+      pending: `Đơn hàng #${order._id} đang chờ xác nhận`,
+      confirmed: `Đơn hàng #${order._id} đã được xác nhận`,
+      shipped: `Đơn hàng #${order._id} đang được vận chuyển`,
+      delivered: `Đơn hàng #${order._id} đã được giao`,
+      returned: `Đơn hàng #${order._id} đã được trả lại`,
+      cancelled: `Đơn hàng #${order._id} đã bị hủy`,
     };
 
     const notification = new Notification({
@@ -267,21 +246,13 @@ router.put("/:id/status", authMiddleware, adminMiddleware, async (req, res) => {
       createdAt: notification.createdAt,
     });
 
-    const adminNotification = new Notification({
-      user: null,
-      message: `Đã cập nhật trạng thái đơn hàng của ${user.name} thành ${status}`,
-      order: order._id,
-      isRead: false,
-    });
-    await adminNotification.save();
-
     req.socketIO.to("admin").emit("notification", {
-      _id: adminNotification._id,
-      user: null,
-      message: adminNotification.message,
+      _id: notification._id,
+      user: order.user,
+      message: `Đã cập nhật trạng thái đơn hàng #${order._id} thành ${status}`,
       order: order._id,
       isRead: false,
-      createdAt: adminNotification.createdAt,
+      createdAt: notification.createdAt,
     });
 
     // Cập nhật thứ hạng thành viên nếu đơn hàng hoàn thành
@@ -349,14 +320,9 @@ router.put("/confirm/:id", authMiddleware, adminMiddleware, async (req, res) => 
     order.status = "confirmed";
     await order.save();
 
-    const user = await User.findById(order.user);
-    if (!user) {
-      return res.status(404).json({ message: "Không tìm thấy người dùng" });
-    }
-
     const notification = new Notification({
       user: order.user,
-      message: `Đơn hàng của ${user.name} đã được xác nhận`,
+      message: `Đơn hàng #${order._id} đã được xác nhận`,
       order: order._id,
       isRead: false,
     });
@@ -371,21 +337,13 @@ router.put("/confirm/:id", authMiddleware, adminMiddleware, async (req, res) => 
       createdAt: notification.createdAt,
     });
 
-    const adminNotification = new Notification({
-      user: null,
-      message: `Đã xác nhận đơn hàng của ${user.name}`,
-      order: order._id,
-      isRead: false,
-    });
-    await adminNotification.save();
-
     req.socketIO.to("admin").emit("notification", {
-      _id: adminNotification._id,
-      user: null,
-      message: adminNotification.message,
+      _id: notification._id,
+      user: order.user,
+      message: `Đã xác nhận đơn hàng #${order._id}`,
       order: order._id,
       isRead: false,
-      createdAt: adminNotification.createdAt,
+      createdAt: notification.createdAt,
     });
 
     res.json({ message: "Xác nhận đơn hàng thành công", order });
@@ -421,14 +379,9 @@ router.put("/deliver/:id", authMiddleware, async (req, res) => {
     order.status = "delivered";
     await order.save();
 
-    const user = await User.findById(order.user);
-    if (!user) {
-      return res.status(404).json({ message: "Không tìm thấy người dùng" });
-    }
-
     const notification = new Notification({
       user: order.user,
-      message: `Đơn hàng của ${user.name} đã được giao`,
+      message: `Đơn hàng #${order._id} đã được giao`,
       order: order._id,
       isRead: false,
     });
@@ -443,24 +396,21 @@ router.put("/deliver/:id", authMiddleware, async (req, res) => {
       createdAt: notification.createdAt,
     });
 
-    const adminNotification = new Notification({
-      user: null,
-      message: `${user.name} đã xác nhận nhận đơn hàng`,
-      order: order._id,
-      isRead: false,
-    });
-    await adminNotification.save();
-
     req.socketIO.to("admin").emit("notification", {
-      _id: adminNotification._id,
-      user: null,
-      message: adminNotification.message,
+      _id: notification._id,
+      user: order.user,
+      message: `User ${order.user} đã xác nhận nhận đơn hàng #${order._id}`,
       order: order._id,
       isRead: false,
-      createdAt: adminNotification.createdAt,
+      createdAt: notification.createdAt,
     });
 
     // Cập nhật thứ hạng thành viên
+    const user = await User.findById(order.user);
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    }
+
     user.totalSpent = (user.totalSpent || 0) + order.totalPrice;
     await user.save();
 
@@ -580,14 +530,9 @@ router.put("/return/:id", authMiddleware, async (req, res) => {
     order.returnReason = reason;
     await order.save();
 
-    const user = await User.findById(order.user);
-    if (!user) {
-      return res.status(404).json({ message: "Không tìm thấy người dùng" });
-    }
-
     const notification = new Notification({
       user: order.user,
-      message: `Đơn hàng của ${user.name} đã được yêu cầu trả lại (lý do: ${reason})`,
+      message: `Đơn hàng #${order._id} đã được yêu cầu trả lại (lý do: ${reason})`,
       order: order._id,
       isRead: false,
     });
@@ -602,21 +547,13 @@ router.put("/return/:id", authMiddleware, async (req, res) => {
       createdAt: notification.createdAt,
     });
 
-    const adminNotification = new Notification({
-      user: null,
-      message: `${user.name} yêu cầu trả đơn hàng (lý do: ${reason})`,
-      order: order._id,
-      isRead: false,
-    });
-    await adminNotification.save();
-
     req.socketIO.to("admin").emit("notification", {
-      _id: adminNotification._id,
-      user: null,
-      message: adminNotification.message,
+      _id: notification._id,
+      user: order.user,
+      message: `User ${order.user} yêu cầu trả đơn hàng #${order._id} (lý do: ${reason})`,
       order: order._id,
       isRead: false,
-      createdAt: adminNotification.createdAt,
+      createdAt: notification.createdAt,
     });
 
     res.json({ message: "Yêu cầu trả hàng thành công", order });
