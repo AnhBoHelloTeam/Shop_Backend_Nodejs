@@ -12,7 +12,6 @@ const userRoutes = require("./routes/userRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const discountRoutes = require("./routes/discountRoutes");
-const walletRoutes = require("./routes/walletRoutes"); // Thêm route ví
 const Notification = require("./models/Notification");
 const { authMiddleware } = require("./middlewares/authMiddleware");
 
@@ -28,13 +27,12 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST", "PUT"], // Thêm PUT để hỗ trợ API ví
+    methods: ["GET", "POST"],
   },
 });
 
 app.use(express.json());
 app.use(cors());
-app.use("/uploads", express.static("uploads")); // Phục vụ file tĩnh từ thư mục uploads
 
 // Pass socketIO to req
 app.use((req, res, next) => {
@@ -49,7 +47,6 @@ app.use("/api/users", userRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/discounts", discountRoutes);
-app.use("/api/wallet", walletRoutes); // Thêm route ví
 
 // Lấy danh sách thông báo
 app.get("/api/notifications", authMiddleware, async (req, res) => {
