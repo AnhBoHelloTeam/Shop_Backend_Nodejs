@@ -34,6 +34,12 @@ const io = new Server(server, {
 app.use(express.json());
 app.use(cors());
 
+// Pass socketIO to req
+app.use((req, res, next) => {
+  req.socketIO = io;
+  next();
+});
+
 // Define API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
@@ -94,4 +100,4 @@ io.on("connection", (socket) => {
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
-module.exports = { io };
+module.exports = { app, server, socketIO: io };
