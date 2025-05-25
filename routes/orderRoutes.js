@@ -6,42 +6,7 @@ const Discount = require("../models/discount");
 const User = require("../models/User");
 const Notification = require("../models/Notification");
 const { authMiddleware, adminMiddleware } = require("../middlewares/authMiddleware");
-const {
-  confirmOrder,
-  confirmDelivery,
-  requestReturn,
-  createReview,
-  getReviews,
-  getOrders,
-  updateOrderStatus,
-  approveReturn,
-  rejectReturn,
-} = require("../controllers/orderController");
-const multer = require("multer");
-const path = require("path");
-
-// Cấu hình multer để lưu ảnh
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/return_images/");
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
-  },
-});
-const upload = multer({
-  storage,
-  fileFilter: (req, file, cb) => {
-    const filetypes = /jpeg|jpg|png/;
-    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = filetypes.test(file.mimetype);
-    if (extname && mimetype) {
-      return cb(null, true);
-    }
-    cb(new Error("Chỉ chấp nhận file JPEG hoặc PNG"));
-  },
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-});
+const { confirmOrder, confirmDelivery, requestReturn, createReview, getReviews, getOrders, updateOrderStatus } = require("../controllers/orderController");
 
 const router = express.Router();
 
@@ -122,15 +87,9 @@ router.post("/checkout", authMiddleware, async (req, res) => {
 
     await newOrder.save();
 
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: "Không tìm thấy người dùng" });
-    }
-
-    const shortId = newOrder._id.toString().substring(0, 8);
     const notification = new Notification({
       user: userId,
-      message: `Đơn hàng #${shortId} đã được tạo, đang chờ xác nhận`,
+      message: `Đơn hàng #${newOrder._id} đã được tạo, đang chờ xác nhận`,
       order: newOrder._id,
       isRead: false,
     });
@@ -145,21 +104,13 @@ router.post("/checkout", authMiddleware, async (req, res) => {
       createdAt: notification.createdAt,
     });
 
-    const adminNotification = new Notification({
-      user: null,
-      message: `Đơn hàng #${shortId} mới được tạo bởi ${user.name}`,
-      order: newOrder._id,
-      isRead: false,
-    });
-    await adminNotification.save();
-
     req.socketIO.to("admin").emit("notification", {
-      _id: adminNotification._id,
-      user: null,
-      message: adminNotification.message,
+      _id: notification._id,
+      user: userId,
+      message: `Đơn hàng #${newOrder._id} mới được tạo bởi user ${userId}`,
       order: newOrder._id,
       isRead: false,
-      createdAt: adminNotification.createdAt,
+      createdAt: notification.createdAt,
     });
 
     await Cart.findOneAndDelete({ user: userId });
@@ -217,7 +168,7 @@ router.get("/status/:status", authMiddleware, async (req, res) => {
     const userRole = req.user.role;
     const { status } = req.params;
 
-    const validStatuses = ["all", "pending", "confirmed", "shipped", "delivered", "cancelled", "returned", "return_requested"];
+    const validStatuses = ["all", "pending", "confirmed", "shipped", "delivered", "cancelled", "returned"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ message: "Trạng thái không hợp lệ" });
     }
@@ -247,28 +198,254 @@ router.get("/status/:status", authMiddleware, async (req, res) => {
 });
 
 // Admin cập nhật trạng thái đơn hàng
-router.put("/:id/status", authMiddleware, adminMiddleware, updateOrderStatus);
+router.put("/:id/status", authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "ID đơn hàng không hợp lệ" });
+    }
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+    }
+
+    const validStatuses = ["pending", "confirmed", "shipped", "delivered", "cancelled", "returned"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Trạng thái không hợp lệ" });
+    }
+
+    order.status = status;
+    await order.save();
+
+    const statusMessages = {
+      pending: `Đơn hàng #${order._id} đang chờ xác nhận`,
+      confirmed: `Đơn hàng #${order._id} đã được xác nhận`,
+      shipped: `Đơn hàng #${order._id} đang được vận chuyển`,
+      delivered: `Đơn hàng #${order._id} đã được giao`,
+      returned: `Đơn hàng #${order._id} đã được trả lại`,
+      cancelled: `Đơn hàng #${order._id} đã bị hủy`,
+    };
+
+    const notification = new Notification({
+      user: order.user,
+      message: statusMessages[status],
+      order: order._id,
+      isRead: false,
+    });
+    await notification.save();
+
+    req.socketIO.to(order.user.toString()).emit("notification", {
+      _id: notification._id,
+      user: order.user,
+      message: notification.message,
+      order: order._id,
+      isRead: notification.isRead,
+      createdAt: notification.createdAt,
+    });
+
+    req.socketIO.to("admin").emit("notification", {
+      _id: notification._id,
+      user: order.user,
+      message: `Đã cập nhật trạng thái đơn hàng #${order._id} thành ${status}`,
+      order: order._id,
+      isRead: false,
+      createdAt: notification.createdAt,
+    });
+
+    // Cập nhật thứ hạng thành viên nếu đơn hàng hoàn thành
+    if (status === "delivered") {
+      const user = await User.findById(order.user);
+      if (!user) {
+        return res.status(404).json({ message: "Không tìm thấy người dùng" });
+      }
+
+      user.totalSpent = (user.totalSpent || 0) + order.totalPrice;
+      await user.save();
+
+      const deliveredOrders = await Order.countDocuments({
+        user: order.user,
+        status: "delivered",
+      });
+
+      console.log(`📡 [Admin Update] User ${user._id}: totalSpent=${user.totalSpent}, deliveredOrders=${deliveredOrders}`);
+
+      let newTier = user.membershipTier;
+      if (deliveredOrders >= 30 && user.totalSpent >= 240000) {
+        newTier = "Diamond";
+      } else if (deliveredOrders >= 20 && user.totalSpent >= 160000) {
+        newTier = "Gold";
+      } else if (deliveredOrders >= 10 && user.totalSpent >= 80000) {
+        newTier = "Silver";
+      } else {
+        newTier = "Member";
+      }
+
+      if (newTier !== user.membershipTier) {
+        user.membershipTier = newTier;
+        await user.save();
+        console.log(`📡 User ${user._id} upgraded to ${newTier}`);
+      } else {
+        console.log(`📡 User ${user._id} remains at ${user.membershipTier}`);
+      }
+    }
+
+    res.json({ message: "Cập nhật trạng thái đơn hàng thành công", order });
+  } catch (error) {
+    console.error("🔥 Lỗi khi cập nhật trạng thái đơn hàng:", error);
+    res.status(500).json({ message: "Lỗi server", error: error.message });
+  }
+});
 
 // Admin xác nhận đơn hàng
-router.put("/confirm/:id", authMiddleware, adminMiddleware, confirmOrder);
+router.put("/confirm/:id", authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "ID đơn hàng không hợp lệ" });
+    }
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+    }
+
+    if (order.status !== "pending") {
+      return res.status(400).json({ message: "Đơn hàng không ở trạng thái chờ xác nhận" });
+    }
+
+    order.status = "confirmed";
+    await order.save();
+
+    const notification = new Notification({
+      user: order.user,
+      message: `Đơn hàng #${order._id} đã được xác nhận`,
+      order: order._id,
+      isRead: false,
+    });
+    await notification.save();
+
+    req.socketIO.to(order.user.toString()).emit("notification", {
+      _id: notification._id,
+      user: order.user,
+      message: notification.message,
+      order: order._id,
+      isRead: notification.isRead,
+      createdAt: notification.createdAt,
+    });
+
+    req.socketIO.to("admin").emit("notification", {
+      _id: notification._id,
+      user: order.user,
+      message: `Đã xác nhận đơn hàng #${order._id}`,
+      order: order._id,
+      isRead: false,
+      createdAt: notification.createdAt,
+    });
+
+    res.json({ message: "Xác nhận đơn hàng thành công", order });
+  } catch (error) {
+    console.error("🔥 Lỗi khi xác nhận đơn hàng:", error);
+    res.status(500).json({ message: "Lỗi server", error: error.message });
+  }
+});
 
 // Người dùng xác nhận nhận hàng
-router.put("/deliver/:id", authMiddleware, confirmDelivery);
+router.put("/deliver/:id", authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.userId;
 
-// Người dùng yêu cầu trả hàng
-router.put("/return/:id", authMiddleware, upload.single("image"), requestReturn);
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "ID đơn hàng không hợp lệ" });
+    }
 
-// Admin duyệt yêu cầu trả hàng
-router.put("/return/:id/approve", authMiddleware, adminMiddleware, approveReturn);
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+    }
 
-// Admin từ chối yêu cầu trả hàng
-router.put("/return/:id/reject", authMiddleware, adminMiddleware, rejectReturn);
+    if (order.user.toString() !== userId) {
+      return res.status(403).json({ message: "Bạn không có quyền xác nhận đơn hàng này" });
+    }
 
-// Người dùng đánh giá sản phẩm
-router.post("/review", authMiddleware, createReview);
+    if (order.status !== "shipped") {
+      return res.status(400).json({ message: "Đơn hàng chưa được giao để xác nhận" });
+    }
 
-// Lấy danh sách đánh giá của sản phẩm
-router.get("/review/:productId", getReviews);
+    order.status = "delivered";
+    await order.save();
+
+    const notification = new Notification({
+      user: order.user,
+      message: `Đơn hàng #${order._id} đã được giao`,
+      order: order._id,
+      isRead: false,
+    });
+    await notification.save();
+
+    req.socketIO.to(order.user.toString()).emit("notification", {
+      _id: notification._id,
+      user: order.user,
+      message: notification.message,
+      order: order._id,
+      isRead: notification.isRead,
+      createdAt: notification.createdAt,
+    });
+
+    req.socketIO.to("admin").emit("notification", {
+      _id: notification._id,
+      user: order.user,
+      message: `User ${order.user} đã xác nhận nhận đơn hàng #${order._id}`,
+      order: order._id,
+      isRead: false,
+      createdAt: notification.createdAt,
+    });
+
+    // Cập nhật thứ hạng thành viên
+    const user = await User.findById(order.user);
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    }
+
+    user.totalSpent = (user.totalSpent || 0) + order.totalPrice;
+    await user.save();
+
+    const deliveredOrders = await Order.countDocuments({
+      user: order.user,
+      status: "delivered",
+    });
+
+    console.log(`📡 [User Confirm] User ${user._id}: totalSpent=${user.totalSpent}, deliveredOrders=${deliveredOrders}`);
+
+    let newTier = user.membershipTier;
+    if (deliveredOrders >= 30 && user.totalSpent >= 240000) {
+      newTier = "Diamond";
+    } else if (deliveredOrders >= 20 && user.totalSpent >= 160000) {
+      newTier = "Gold";
+    } else if (deliveredOrders >= 10 && user.totalSpent >= 80000) {
+      newTier = "Silver";
+    } else {
+      newTier = "Member";
+    }
+
+    if (newTier !== user.membershipTier) {
+      user.membershipTier = newTier;
+      await user.save();
+      console.log(`📡 User ${user._id} upgraded to ${newTier}`);
+    } else {
+      console.log(`📡 User ${user._id} remains at ${user.membershipTier}`);
+    }
+
+    res.json({ message: "Xác nhận nhận hàng thành công", order });
+  } catch (error) {
+    console.error("🔥 Lỗi khi xác nhận nhận hàng:", error);
+    res.status(500).json({ message: "Lỗi server", error: error.message });
+  }
+});
 
 // Đồng bộ thứ hạng thành viên
 router.post("/sync-membership", authMiddleware, async (req, res) => {
@@ -320,5 +497,76 @@ router.post("/sync-membership", authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Lỗi server", error: error.message });
   }
 });
+
+// Người dùng yêu cầu trả hàng
+router.put("/return/:id", authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.userId;
+    const { reason } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "ID đơn hàng không hợp lệ" });
+    }
+
+    if (!reason || typeof reason !== "string" || reason.trim().length === 0) {
+      return res.status(400).json({ message: "Lý do trả hàng không hợp lệ" });
+    }
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+    }
+
+    if (order.user.toString() !== userId) {
+      return res.status(403).json({ message: "Bạn không có quyền yêu cầu trả hàng cho đơn hàng này" });
+    }
+
+    if (order.status !== "delivered") {
+      return res.status(400).json({ message: "Đơn hàng chưa được giao để yêu cầu trả hàng" });
+    }
+
+    order.status = "returned";
+    order.returnReason = reason;
+    await order.save();
+
+    const notification = new Notification({
+      user: order.user,
+      message: `Đơn hàng #${order._id} đã được yêu cầu trả lại (lý do: ${reason})`,
+      order: order._id,
+      isRead: false,
+    });
+    await notification.save();
+
+    req.socketIO.to(order.user.toString()).emit("notification", {
+      _id: notification._id,
+      user: order.user,
+      message: notification.message,
+      order: order._id,
+      isRead: notification.isRead,
+      createdAt: notification.createdAt,
+    });
+
+    req.socketIO.to("admin").emit("notification", {
+      _id: notification._id,
+      user: order.user,
+      message: `User ${order.user} yêu cầu trả đơn hàng #${order._id} (lý do: ${reason})`,
+      order: order._id,
+      isRead: false,
+      createdAt: notification.createdAt,
+    });
+
+    res.json({ message: "Yêu cầu trả hàng thành công", order });
+  } catch (error) {
+    console.error("🔥 Lỗi khi yêu cầu trả hàng:", error);
+    res.status(500).json({ message: "Lỗi server", error: error.message });
+  }
+});
+
+// Người dùng đánh giá sản phẩm
+router.post("/review", authMiddleware, createReview);
+
+// Lấy danh sách đánh giá của sản phẩm
+router.get("/review/:productId", getReviews);
 
 module.exports = router;
