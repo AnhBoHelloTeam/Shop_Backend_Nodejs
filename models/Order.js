@@ -18,6 +18,18 @@ const orderSchema = new mongoose.Schema({
     enum: ["pending", "confirmed", "shipped", "delivered", "returned", "cancelled"],
     default: "pending",
   },
+  returnRequest: {
+    status: {
+      type: String,
+      enum: ["pending", "approved", "rejected", null],
+      default: null,
+    },
+    reason: { type: String },
+    image: { type: String }, // URL ảnh minh chứng
+    requestedAt: { type: Date },
+    processedAt: { type: Date },
+    processedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // Admin xử lý
+  },
   createdAt: { type: Date, default: Date.now },
 });
 
