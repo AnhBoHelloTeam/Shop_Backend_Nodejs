@@ -12,6 +12,7 @@ const userRoutes = require("./routes/userRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const discountRoutes = require("./routes/discountRoutes");
+const walletRoutes = require("./routes/walletRoutes");
 const Notification = require("./models/Notification");
 const { authMiddleware } = require("./middlewares/authMiddleware");
 
@@ -47,6 +48,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/discounts", discountRoutes);
+app.use("/api/wallet", walletRoutes);
 
 // Lấy danh sách thông báo
 app.get("/api/notifications", authMiddleware, async (req, res) => {
