@@ -6,6 +6,8 @@ const Transaction = require('../models/TKBank/Transaction');
 const Notification = require('../models/Notification');
 const PaymentMethod = require('../models/TKBank/PaymentMethod');
 const User = require('../models/User');
+const Order = require('../models/Order'); // Thêm model Order
+const Cart = require('../models/Cart'); // Thêm model Cart
 const { authMiddleware, adminMiddleware } = require('../middlewares/authMiddleware');
 const { v4: uuidv4 } = require('uuid');
 const multer = require('multer');
@@ -49,7 +51,6 @@ router.post('/deposit', authMiddleware, async (req, res) => {
 
     await depositRequest.save();
 
-    // Gửi thông báo đến admin
     const adminNotification = new Notification({
       user: req.user.userId,
       message: `Người dùng ${user.name} yêu cầu nạp ${amount} VNĐ (Mã giao dịch: ${transactionCode})`,
@@ -84,7 +85,6 @@ router.post('/deposit/approve/:requestId', authMiddleware, adminMiddleware, asyn
     depositRequest.status = 'approved';
     await depositRequest.save();
 
-    // Cập nhật số dư ví
     let wallet = await Wallet.findOne({ userId: depositRequest.userId._id });
     if (!wallet) {
       wallet = new Wallet({ userId: depositRequest.userId._id, balance: 0 });
@@ -93,7 +93,6 @@ router.post('/deposit/approve/:requestId', authMiddleware, adminMiddleware, asyn
     wallet.updatedAt = Date.now();
     await wallet.save();
 
-    // Lưu giao dịch
     const transaction = new Transaction({
       userId: depositRequest.userId._id,
       type: 'deposit',
@@ -104,7 +103,6 @@ router.post('/deposit/approve/:requestId', authMiddleware, adminMiddleware, asyn
     });
     await transaction.save();
 
-    // Gửi thông báo đến user
     const userNotification = new Notification({
       user: depositRequest.userId._id,
       message: `Yêu cầu nạp ${depositRequest.amount} VNĐ của bạn đã được duyệt`,
@@ -353,6 +351,126 @@ router.get('/users', authMiddleware, adminMiddleware, async (req, res) => {
     res.json(users);
   } catch (error) {
     console.error('🔥 Error fetching users:', error);
+    res.status(500).json({ error: 'Lỗi server' });
+  }
+});
+
+// Trừ tiền từ ví
+router.post('/deduct', authMiddleware, async (req, res) => {
+  try {
+    const { amount } = req.body;
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ error: 'Vui lòng cung cấp số tiền hợp lệ' });
+    }
+
+    const wallet = await Wallet.findOne({ userId: req.user.userId });
+    if (!wallet) {
+      return res.status(404).json({ error: 'Không tìm thấy ví' });
+    }
+    if (wallet.balance < amount) {
+      return res.status(400).json({ error: 'Số dư không đủ' });
+    }
+
+    wallet.balance -= amount;
+    wallet.updatedAt = Date.now();
+    await wallet.save();
+
+    const transaction = new Transaction({
+      userId: req.user.userId,
+      type: 'payment',
+      amount,
+      status: 'completed',
+      transactionCode: `PAY-${uuidv4().slice(0, 8)}`,
+    });
+    await transaction.save();
+
+    const userNotification = new Notification({
+      user: req.user.userId,
+      message: `Thanh toán ${amount} VNĐ từ ví cho đơn hàng`,
+    });
+    await userNotification.save();
+    req.socketIO.to(req.user.userId.toString()).emit('notification', {
+      _id: userNotification._id,
+      message: userNotification.message,
+      createdAt: userNotification.createdAt,
+      isRead: false,
+    });
+
+    res.json({ message: 'Trừ tiền thành công', balance: wallet.balance });
+  } catch (error) {
+    console.error('🔥 Error deducting from wallet:', error);
+    res.status(500).json({ error: 'Lỗi server' });
+  }
+});
+
+// Xử lý checkout (thêm vào nếu chưa có file orders.js)
+router.post('/checkout', authMiddleware, async (req, res) => {
+  try {
+    const { items, discountCode, paymentMethod, shippingAddress, totalPrice } = req.body;
+    if (!items || !paymentMethod || !totalPrice || totalPrice < 0) {
+      return res.status(400).json({ error: 'Thông tin đơn hàng không hợp lệ' });
+    }
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Không tìm thấy người dùng' });
+    }
+
+    if (paymentMethod === 'WALLET') {
+      const wallet = await Wallet.findOne({ userId: req.user.userId });
+      if (!wallet) {
+        return res.status(404).json({ error: 'Không tìm thấy ví' });
+      }
+      if (wallet.balance < totalPrice) {
+        return res.status(400).json({ error: 'Số dư ví không đủ' });
+      }
+
+      wallet.balance -= totalPrice;
+      wallet.updatedAt = Date.now();
+      await wallet.save();
+
+      const transaction = new Transaction({
+        userId: req.user.userId,
+        type: 'payment',
+        amount: totalPrice,
+        status: 'completed',
+        transactionCode: `PAY-${uuidv4().slice(0, 8)}`,
+      });
+      await transaction.save();
+
+      const userNotification = new Notification({
+        user: req.user.userId,
+        message: `Thanh toán ${totalPrice} VNĐ từ ví cho đơn hàng`,
+      });
+      await userNotification.save();
+      req.socketIO.to(req.user.userId.toString()).emit('notification', {
+        _id: userNotification._id,
+        message: userNotification.message,
+        createdAt: userNotification.createdAt,
+        isRead: false,
+      });
+    }
+
+    const order = new Order({
+      userId: req.user.userId,
+      items,
+      discountCode,
+      paymentMethod,
+      shippingAddress,
+      totalPrice,
+      status: 'pending',
+    });
+    await order.save();
+
+    await Cart.findOneAndUpdate(
+      { userId: req.user.userId },
+      { $set: { items: [] } },
+      { upsert: true }
+    );
+
+    res.status(201).json({ message: 'Đặt hàng thành công', order });
+  } catch (error) {
+    console.error('🔥 Error checking out:', error);
     res.status(500).json({ error: 'Lỗi server' });
   }
 });
