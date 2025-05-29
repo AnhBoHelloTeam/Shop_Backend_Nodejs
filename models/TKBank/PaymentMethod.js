@@ -4,7 +4,7 @@ const paymentMethodSchema = new mongoose.Schema({
   name: { type: String, required: true },
   type: { type: String, required: true, enum: ['bank', 'ewallet'] },
   details: { type: String, required: true },
-  qrCodeUrl: { type: String },
+  qrCodeUrl: { type: String }, 
   createdAt: { type: Date, default: Date.now },
 });
 

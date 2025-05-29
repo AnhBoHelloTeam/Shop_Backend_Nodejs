@@ -8,6 +8,19 @@ const PaymentMethod = require('../models/TKBank/PaymentMethod');
 const User = require('../models/User');
 const { authMiddleware, adminMiddleware } = require('../middlewares/authMiddleware');
 const { v4: uuidv4 } = require('uuid');
+const multer = require('multer');
+const path = require('path');
+
+// Cấu hình multer để lưu file
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/qr_codes/');
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  },
+});
+const upload = multer({ storage });
 
 // User gửi yêu cầu nạp tiền
 router.post('/deposit', authMiddleware, async (req, res) => {
@@ -182,6 +195,30 @@ router.post('/payment-methods', authMiddleware, adminMiddleware, async (req, res
     res.status(201).json({ message: 'Thêm phương thức thanh toán thành công', paymentMethod });
   } catch (error) {
     console.error('🔥 Error adding payment method:', error);
+    res.status(500).json({ error: 'Lỗi server' });
+  }
+});
+
+// Admin tải ảnh QR cho phương thức thanh toán
+router.post('/payment-methods/add-qr', authMiddleware, adminMiddleware, upload.single('qrCode'), async (req, res) => {
+  try {
+    const { name, type, details } = req.body;
+    if (!name || !type || !details || !req.file) {
+      return res.status(400).json({ error: 'Vui lòng cung cấp đầy đủ thông tin và ảnh QR' });
+    }
+
+    const qrCodeUrl = `/uploads/qr_codes/${req.file.filename}`;
+    const paymentMethod = new PaymentMethod({
+      name,
+      type,
+      details,
+      qrCodeUrl,
+    });
+    await paymentMethod.save();
+
+    res.status(201).json({ message: 'Thêm phương thức thanh toán với QR thành công', paymentMethod });
+  } catch (error) {
+    console.error('🔥 Error adding QR code:', error);
     res.status(500).json({ error: 'Lỗi server' });
   }
 });
